@@ -3,14 +3,6 @@ export function TopBarComponent({ showSidebarButton = true } = {}) {
         <header class="top-bar" aria-label="Top navigation">
             <img class="top-bar-image" src="assets/payakumbuh-logo.png" alt="Payakumbuh">
 
-            <button
-                class="sidebar-toggle"
-                type="button"
-                aria-label="Open sidebar"
-                aria-controls="page-sidebar"
-                aria-expanded="false"
-            >
-
             ${showSidebarButton ? `
                 <button 
                 class="sidebar-toggle" 
