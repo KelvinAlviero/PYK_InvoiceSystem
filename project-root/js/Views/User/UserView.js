@@ -1,3 +1,4 @@
+//Temporary Invoice Database
 const invoices = [
     {
         id: "INV-001",
@@ -46,6 +47,7 @@ const invoices = [
     },
 ];
 
+//Protects from commands being made
 function escapeHtml(value) {
     return String(value)
         .replaceAll("&", "&amp;")
@@ -59,6 +61,7 @@ function getFileNames(invoice) {
     return invoice.files ?? {};
 }
 
+// Display for the Userview
 export function UserView() {
     return `
         <section class="box top-box" aria-label="Invoice actions">
@@ -76,7 +79,6 @@ export function UserView() {
                             <th scope="col">ID</th>
                             <th scope="col">Branch name</th>
                             <th scope="col">No. PO &amp; Invoice</th>
-                            <th scope="col">Document status</th>
                             <th scope="col">Status</th>
                             <th scope="col">Notes</th>
                             <th scope="col">Action</th>
@@ -88,7 +90,6 @@ export function UserView() {
                                 <td><input type="text" value="${escapeHtml(invoice.id)}" aria-label="ID"></td>
                                 <td><input type="text" value="${escapeHtml(invoice.supplierName)}" aria-label="Branch name"></td>
                                 <td><input type="text" value="${escapeHtml(invoice.poNumber)}" aria-label="No. PO and Invoice"></td>
-                                <td><span class="table-status">${escapeHtml(invoice.documentStatus)}</span></td>
                                 <td><span class="table-status">${escapeHtml(invoice.status)}</span></td>
                                 <td><input type="text" value="${escapeHtml(invoice.notes)}" aria-label="Notes"></td>
                                 <td><button class="table-action" type="button" data-invoice-index="${invoices.indexOf(invoice)}">View</button></td>
@@ -151,7 +152,7 @@ export function UserView() {
                 </div>
                 <div class="invoice-form-actions">
                     <button class="invoice-cancel" type="button">Cancel</button>
-                    <button class="invoice-submit" type="submit">Submit AP</button>
+                    <button class="invoice-submit" type="submit">Submit</button>
                 </div>
             </form>
         </section>
