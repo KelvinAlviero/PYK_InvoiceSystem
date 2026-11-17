@@ -5,7 +5,7 @@ import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
 
 const appContainer = document.getElementById('app');
-
+// Main.js compiles stuff
 function renderApp(activeView = 'user') {
     if (!appContainer) {
         return;
@@ -13,7 +13,10 @@ function renderApp(activeView = 'user') {
 
     const userRole = 'User';
     const isLoginView = activeView === 'login';
-    const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'));
+    const showSidebar = !isLoginView
+    const sidebar = showSidebar 
+    ? SidebarComponent(() => renderApp('profile'))
+    : null;
     let currentView = '';
 
     if (isLoginView) {
@@ -23,7 +26,7 @@ function renderApp(activeView = 'user') {
     }
 
     appContainer.innerHTML = `
-        ${isLoginView ? '' : TopBarComponent()}
+        ${TopBarComponent({ showSidebarButton: showSidebar})}
         <main class="page-content">
             ${currentView}
         </main>

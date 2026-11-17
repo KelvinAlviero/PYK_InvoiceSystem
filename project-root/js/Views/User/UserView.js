@@ -85,9 +85,10 @@ export function UserView() {
                         </tr>
                     </thead>
                     <tbody>
+                    
                         ${invoices.map((invoice) => `
                             <tr>
-                                <td><input type="text" value="${escapeHtml(invoice.id)}" aria-label="ID"></td>
+                                <td><input type="text" value="${escapeHtml(invoice.id)}" aria-label="ID"></td> 
                                 <td><input type="text" value="${escapeHtml(invoice.supplierName)}" aria-label="Branch name"></td>
                                 <td><input type="text" value="${escapeHtml(invoice.poNumber)}" aria-label="No. PO and Invoice"></td>
                                 <td><span class="table-status">${escapeHtml(invoice.status)}</span></td>
@@ -100,7 +101,7 @@ export function UserView() {
             </div>
         </section>
         <div class="invoice-modal-backdrop" aria-hidden="true"></div>
-        <section class="invoice-modal" id="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title" aria-hidden="true" inert>
+        <section class="invoice-modal" id="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title" aria-hidden="true" inert>  
             <header class="invoice-modal-header">
                 <h2 id="invoice-modal-title">Add new invoice</h2>
                 <button class="invoice-modal-close" type="button" aria-label="Close invoice form">X</button>
