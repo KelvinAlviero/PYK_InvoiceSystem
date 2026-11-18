@@ -1,6 +1,3 @@
-
-import { html } from 'lit-html';
-
 export function LoginView() {
     return html`
         <section class="login-page" aria-label="Login">
