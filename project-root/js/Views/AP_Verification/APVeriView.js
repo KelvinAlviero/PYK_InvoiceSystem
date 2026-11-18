@@ -1,9 +1,9 @@
 const verificationInvoice = {
-    documentNumber: 'DOC-2026-002',
-    vendor: 'RM Payakumbuh Ciater',
-    purchaseOrder: 'PO-2026-7715',
-    amount: 'Rp 48.500.000',
-    status: 'Menunggu Verifikasi'
+    documentNumber: 'Yo',
+    vendor: 'Put',
+    purchaseOrder: 'Ur',
+    amount: 'Data',
+    status: 'Here'
 };
 
 //Invoice format (little boxes)
