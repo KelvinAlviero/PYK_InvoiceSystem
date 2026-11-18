@@ -9,11 +9,12 @@
 }
 
 .top-bar-image {
+    top: 10%;
+    left: var(--page-gutter);
+    transform: translate(10%, 10%);
     position: absolute;
-    top: 22px;
-    left: 42px;
-    width: 58px;
-    height: 41px;
+    width: clamp(60px, 10vw, 60px);
+    height: clamp(60px, 7vw, 60px);
     object-fit: contain;
 }
 
