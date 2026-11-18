@@ -37,9 +37,9 @@ function renderInvoiceDetails(invoice) {
 
 export function TreasuryView() {
     const html = `
-        <section class="treasury-layout" aria-label="Treasury dashboard">
-            <section class="treasury-list-panel" aria-labelledby="ready-invoices-title">
-                <header class="treasury-list-header">
+        <section class="invoice-layout" aria-label="Treasury dashboard">
+            <section class="invoice-list-panel" aria-labelledby="ready-invoices-title">
+                <header class="invoice-list-header">
                     <h1 id="ready-invoices-title">Siap Dibayar</h1>
                     <span class="invoice-count">1 Tagihan</span>
                 </header>
@@ -62,8 +62,8 @@ export function TreasuryView() {
                 </div>
             </section>
 
-            <section class="treasury-detail-panel" aria-label="Detail tagihan">
-                <div class="treasury-detail-header" aria-hidden="true"></div>
+            <section class="invoice-detail-panel" aria-label="Detail tagihan">
+                <div class="invoice-detail-header" aria-hidden="true"></div>
                 <div class="invoice-detail-body" aria-live="polite">
                     <p class="empty-detail-message">Pilih tagihan di treasury</p>
                 </div>

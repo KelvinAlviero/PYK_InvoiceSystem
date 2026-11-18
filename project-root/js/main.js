@@ -4,7 +4,7 @@ import { addInvoice, attachInvoiceModalListeners, updateInvoice, UserView } from
 import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
-
+import { VerificationView } from './Views/AP_Verification/APVeriView.js';
 const appContainer = document.getElementById('app');
 
 function renderApp(activeView = 'user') {
@@ -17,6 +17,7 @@ function renderApp(activeView = 'user') {
     const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'));
     let currentView = '';
     let treasuryView = null;
+    let verificationView = null;
 
     if (isLoginView) {
         currentView = LoginView();
@@ -26,13 +27,16 @@ function renderApp(activeView = 'user') {
         } else if (activeView === 'treasury') {
             treasuryView = TreasuryView();
             currentView = treasuryView.html;
+        } else if (activeView === 'ap-verification') {
+            verificationView = VerificationView();
+            currentView = verificationView.html;
         } else {
             currentView = UserView();
         }
     }
 
     appContainer.innerHTML = `
-        ${isLoginView ? '' : TopBarComponent()}
+        ${TopBarComponent({ showSidebarButton: !isLoginView })}
         <main class="page-content">
             ${currentView}
         </main>
@@ -41,6 +45,7 @@ function renderApp(activeView = 'user') {
 
     sidebar?.attachListeners();
     treasuryView?.attachListeners();
+    verificationView?.attachListeners();
     if (activeView === 'user') {
         attachInvoiceModalListeners((invoice, isResubmission) => {
             if (isResubmission) {
@@ -61,14 +66,8 @@ function renderApp(activeView = 'user') {
         document.querySelector(".login-card")?.addEventListener("submit", (event) => {
             event.preventDefault();
             const selectedView = document.querySelector("#view-selector")?.value;
-            if (selectedView === "ap-verification") {
-                window.location.href = "stuff.html";
-                return;
-            }
-
-            renderApp(selectedView === "treasury" ? "treasury" : "user");
+            renderApp(selectedView);
         });
     }
 }
-
 renderApp('login');

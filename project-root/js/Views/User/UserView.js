@@ -63,7 +63,7 @@ function getFileNames(invoice) {
 
 // Display for the Userview
 export function UserView() {
-    return html `
+    return `
         <section class="box top-box" aria-label="Invoice actions">
             <button class="invoice-button" type="button" aria-controls="invoice-modal" aria-expanded="false">
                 <span class="invoice-button-mark" aria-hidden="true">+</span>

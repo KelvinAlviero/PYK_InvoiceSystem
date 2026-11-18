@@ -257,8 +257,8 @@ body {
 
 .login-page {
     display: grid;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: calc(100vh - var(--top-bar-height) - var(--top-bar-border-height));
+    min-height: calc(100dvh - var(--top-bar-height) - var(--top-bar-border-height));
     padding: var(--page-gutter);
     place-items: center;
     background-color: var(--color-background);

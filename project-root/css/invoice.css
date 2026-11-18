@@ -1,32 +1,32 @@
-/* Treasury dashboard layout, matched to the supplied Figma reference. */
-.treasury-layout {
-    --treasury-top-gap: clamp(34px, 14vh, 73px);
+/* Shared invoice workspace layout used by Treasury and AP Verification. */
+.invoice-layout {
+    --invoice-top-gap: clamp(34px, 14vh, 73px);
     display: grid;
     grid-template-columns: minmax(0, 0.38fr) minmax(0, 0.62fr);
     gap: clamp(28px, 5.6vw, 72px);
     width: min(88.3%, 1240px);
-    height: calc(100dvh - var(--top-bar-height) - var(--top-bar-border-height) - var(--treasury-top-gap));
+    height: calc(100dvh - var(--top-bar-height) - var(--top-bar-border-height) - var(--invoice-top-gap));
     min-height: 344px;
-    margin: var(--treasury-top-gap) auto 0;
+    margin: var(--invoice-top-gap) auto 0;
     position: relative;
     left: 7px;
 }
 
-.treasury-list-panel,
-.treasury-detail-panel {
+.invoice-list-panel,
+.invoice-detail-panel {
     min-width: 0;
     overflow: hidden;
     border-radius: 12px 12px 0 0;
     background-color: var(--color-accent);
 }
 
-.treasury-list-panel {
+.invoice-list-panel {
     display: flex;
     flex-direction: column;
     min-height: 0;
 }
 
-.treasury-list-header {
+.invoice-list-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -38,7 +38,7 @@
     color: #fff;
 }
 
-.treasury-list-header h1 {
+.invoice-list-header h1 {
     margin: 0;
     font-size: 12px;
     font-weight: 400;
@@ -167,12 +167,12 @@
     background-color: var(--color-accent-dark);
 }
 
-.treasury-detail-panel {
+.invoice-detail-panel {
     display: flex;
     flex-direction: column;
 }
 
-.treasury-detail-header {
+.invoice-detail-header {
     flex: 0 0 49px;
     min-height: 49px;
     border-bottom: 1px solid rgb(255 255 255 / 78%);
@@ -270,7 +270,7 @@
         left: 18px;
     }
 
-    .treasury-layout {
+    .invoice-layout {
         display: flex;
         flex-direction: column;
         gap: 22px;
@@ -281,12 +281,12 @@
         left: 0;
     }
 
-    .treasury-list-panel {
+    .invoice-list-panel {
         height: 300px;
         flex: 0 0 300px;
     }
 
-    .treasury-detail-panel {
+    .invoice-detail-panel {
         min-height: 340px;
     }
 

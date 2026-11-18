@@ -1,5 +1,5 @@
 export function LoginView() {
-    return html`
+    return `
         <section class="login-page" aria-label="Login">
             <form class="login-card">
                 <h1>Login</h1>
