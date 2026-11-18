@@ -13,7 +13,7 @@ function renderInvoiceDetails(invoice) {
             <div class="invoice-detail-heading">
                 <div>
                     <p class="detail-eyebrow">INFORMASI TAGIHAN</p>
-                    <h2>${invoice.documentNumber}</h2>
+                    <h2>${invoice.documentNumber}</h2> 
                 </div>
                 <span class="invoice-status">${invoice.status}</span>
             </div>

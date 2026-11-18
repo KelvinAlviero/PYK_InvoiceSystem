@@ -3,14 +3,16 @@ export function LoginView() {
         <section class="login-page" aria-label="Login">
             <form class="login-card">
                 <h1>Login</h1>
-                <label for="view-selector">Choose a view</label>
-                <select id="view-selector" name="view">
-                    <option value="user">Userview</option>
-                    <option value="ap-verification">AP Verification</option>
-                    <option value="admin">Admin</option>
-                    <option value="treasury">Treasury</option>
-                </select>
-                <button type="submit">Continue</button>
+                <label for="login-email">Email</label>
+                <input id="login-email" name="email" type="email" autocomplete="username" required>
+
+                <label for="login-password">Password</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+
+                <div class="login-card-actions">
+                    <a class="login-register-link" href="#create-account">Make new account</a>
+                    <button type="submit">Confirm</button>
+                </div>
             </form>
         </section>
     `;

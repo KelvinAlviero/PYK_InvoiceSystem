@@ -65,8 +65,13 @@ function renderApp(activeView = 'user') {
     if (isLoginView) {
         document.querySelector(".login-card")?.addEventListener("submit", (event) => {
             event.preventDefault();
-            const selectedView = document.querySelector("#view-selector")?.value;
-            renderApp(selectedView);
+            const loginForm = event.currentTarget;
+
+            if (!(loginForm instanceof HTMLFormElement) || !loginForm.reportValidity()) {
+                return;
+            }
+
+            renderApp('user');
         });
     }
 }

@@ -282,7 +282,7 @@ body {
     font-weight: 700;
 }
 
-.login-card select,
+.login-card input,
 .login-card button {
     min-height: 42px;
     padding: 8px 12px;
@@ -291,9 +291,23 @@ body {
     font: inherit;
 }
 
-.login-card select {
+.login-card input {
     background-color: var(--color-background);
     color: var(--color-accent-dark);
+}
+
+.login-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.login-register-link {
+    color: var(--color-background);
+    font-size: 13px;
+    text-decoration: underline;
 }
 
 .login-card button {
