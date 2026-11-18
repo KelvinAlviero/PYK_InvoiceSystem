@@ -310,6 +310,12 @@ body {
     text-decoration: underline;
 }
 
+.login-error {
+    margin: 0;
+    color: #ffd9df;
+    font-size: 13px;
+}
+
 .login-card button {
     background-color: var(--color-accent-dark);
     color: var(--color-background);

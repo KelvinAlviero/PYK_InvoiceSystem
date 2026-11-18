@@ -5,15 +5,34 @@ import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
+import { getCurrentUser, login, logout } from './authService.js';
 const appContainer = document.getElementById('app');
+
+const roleHomeViews = {
+    user: 'user',
+    verification: 'ap-verification',
+    treasury: 'treasury',
+    admin: 'admin'
+};
+
+function getRoleHomeView(role) {
+    return roleHomeViews[String(role).trim().toLowerCase()] ?? null;
+}
 
 function renderApp(activeView = 'user') {
     if (!appContainer) {
         return;
     }
 
-    const userRole = 'User';
     const isLoginView = activeView === 'login';
+    const currentUser = getCurrentUser();
+
+    if (!isLoginView && !currentUser) {
+        renderApp('login');
+        return;
+    }
+
+    const userRole = currentUser?.role;
     const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'));
     let currentView = '';
     let treasuryView = null;
@@ -21,7 +40,7 @@ function renderApp(activeView = 'user') {
 
     if (isLoginView) {
         currentView = LoginView();
-    } else if (userRole === 'User') {
+    } else if (userRole) {
         if (activeView === 'profile') {
             currentView = UserProfileView();
         } else if (activeView === 'treasury') {
@@ -59,19 +78,42 @@ function renderApp(activeView = 'user') {
 
     if (activeView === 'profile') {
         document.querySelector(".back-home-button")?.addEventListener("click", () => renderApp('user'));
-        document.querySelector(".logout-button")?.addEventListener("click", () => renderApp('login'));
+        document.querySelector(".logout-button")?.addEventListener("click", () => {
+            logout();
+            renderApp('login');
+        });
     }
 
     if (isLoginView) {
         document.querySelector(".login-card")?.addEventListener("submit", (event) => {
             event.preventDefault();
             const loginForm = event.currentTarget;
+            const errorMessage = document.querySelector(".login-error");
 
             if (!(loginForm instanceof HTMLFormElement) || !loginForm.reportValidity()) {
                 return;
             }
 
-            renderApp('user');
+            const formData = new FormData(loginForm);
+            const email = String(formData.get('email') ?? '').trim();
+            const password = String(formData.get('password') ?? '');
+
+            login(email, password)
+                .then((user) => {
+                    const homeView = getRoleHomeView(user.role);
+
+                    if (!homeView) {
+                        throw new Error(`No dashboard is configured for the "${user.role}" role.`);
+                    }
+
+                    renderApp(homeView);
+                })
+                .catch((error) => {
+                    if (errorMessage) {
+                        errorMessage.textContent = error.message;
+                        errorMessage.hidden = false;
+                    }
+                });
         });
     }
 }

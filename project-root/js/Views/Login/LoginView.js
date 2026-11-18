@@ -9,6 +9,8 @@ export function LoginView() {
                 <label for="login-password">Password</label>
                 <input id="login-password" name="password" type="password" autocomplete="current-password" required>
 
+                <p class="login-error" role="alert" hidden></p>
+
                 <div class="login-card-actions">
                     <a class="login-register-link" href="#create-account">Make new account</a>
                     <button type="submit">Confirm</button>
