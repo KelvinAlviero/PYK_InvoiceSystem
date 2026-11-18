@@ -6,7 +6,7 @@ import { LoginView } from './Views/Login/LoginView.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 
 const appContainer = document.getElementById('app');
-// Main.js compiles stuff
+
 function renderApp(activeView = 'user') {
     if (!appContainer) {
         return;
@@ -14,10 +14,7 @@ function renderApp(activeView = 'user') {
 
     const userRole = 'User';
     const isLoginView = activeView === 'login';
-    const showSidebar = !isLoginView
-    const sidebar = showSidebar 
-    ? SidebarComponent(() => renderApp('profile'))
-    : null;
+    const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'));
     let currentView = '';
     let treasuryView = null;
 
@@ -35,7 +32,7 @@ function renderApp(activeView = 'user') {
     }
 
     appContainer.innerHTML = `
-        ${TopBarComponent({ showSidebarButton: showSidebar})}
+        ${isLoginView ? '' : TopBarComponent()}
         <main class="page-content">
             ${currentView}
         </main>

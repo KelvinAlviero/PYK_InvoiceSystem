@@ -1,5 +1,8 @@
+
+import { html } from 'lit-html';
+
 export function LoginView() {
-    return `
+    return html`
         <section class="login-page" aria-label="Login">
             <form class="login-card">
                 <h1>Login</h1>
