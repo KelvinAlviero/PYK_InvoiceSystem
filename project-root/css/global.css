@@ -283,6 +283,7 @@ body {
 }
 
 .login-card input,
+.login-card select,
 .login-card button {
     min-height: 42px;
     padding: 8px 12px;
@@ -292,6 +293,11 @@ body {
 }
 
 .login-card input {
+    background-color: var(--color-background);
+    color: var(--color-accent-dark);
+}
+
+.login-card select {
     background-color: var(--color-background);
     color: var(--color-accent-dark);
 }

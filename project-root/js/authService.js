@@ -1,14 +1,14 @@
 const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbyLlFoPNlIhEs2lSrBL9wtSGf2_CqNkZxDfMb9vmCsltu4PYrev2JHw2Xe7_NT2yaY9/exec';
 const AUTH_USER_STORAGE_KEY = 'auth-user';
 
-export async function login(email, password) {
+async function requestAuth(payload) {
     const response = await fetch(AUTH_API_URL, {
         method: 'POST',
         headers: {
             // text/plain avoids the browser's JSON CORS preflight for Apps Script.
             'Content-Type': 'text/plain;charset=utf-8'
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(payload)
     });
 
     let result;
@@ -28,6 +28,14 @@ export async function login(email, password) {
 
     sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
     return result.user;
+}
+
+export function login(email, password) {
+    return requestAuth({ action: 'login', email, password });
+}
+
+export function registerAccount(email, password, role) {
+    return requestAuth({ action: 'register', email, password, role });
 }
 
 export function getCurrentUser() {

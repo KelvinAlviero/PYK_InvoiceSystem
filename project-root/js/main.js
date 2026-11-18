@@ -5,7 +5,7 @@ import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
-import { getCurrentUser, login, logout } from './authService.js';
+import { getCurrentUser, login, logout, registerAccount } from './authService.js';
 const appContainer = document.getElementById('app');
 
 const roleHomeViews = {
@@ -19,7 +19,7 @@ function getRoleHomeView(role) {
     return roleHomeViews[String(role).trim().toLowerCase()] ?? null;
 }
 
-function renderApp(activeView = 'user') {
+function renderApp(activeView = 'user', authMode = 'login') {
     if (!appContainer) {
         return;
     }
@@ -28,7 +28,7 @@ function renderApp(activeView = 'user') {
     const currentUser = getCurrentUser();
 
     if (!isLoginView && !currentUser) {
-        renderApp('login');
+        renderApp('login', authMode);
         return;
     }
 
@@ -39,7 +39,7 @@ function renderApp(activeView = 'user') {
     let verificationView = null;
 
     if (isLoginView) {
-        currentView = LoginView();
+        currentView = LoginView(authMode);
     } else if (userRole) {
         if (activeView === 'profile') {
             currentView = UserProfileView();
@@ -85,20 +85,32 @@ function renderApp(activeView = 'user') {
     }
 
     if (isLoginView) {
-        document.querySelector(".login-card")?.addEventListener("submit", (event) => {
+        const loginForm = document.querySelector(".login-card");
+        const registerLink = document.querySelector(".login-register-link");
+
+        registerLink?.addEventListener("click", (event) => {
             event.preventDefault();
-            const loginForm = event.currentTarget;
+            renderApp('login', loginForm?.dataset.authMode === 'register' ? 'login' : 'register');
+        });
+
+        loginForm?.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const submittedForm = event.currentTarget;
             const errorMessage = document.querySelector(".login-error");
 
-            if (!(loginForm instanceof HTMLFormElement) || !loginForm.reportValidity()) {
+            if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.reportValidity()) {
                 return;
             }
 
-            const formData = new FormData(loginForm);
+            const formData = new FormData(submittedForm);
             const email = String(formData.get('email') ?? '').trim();
             const password = String(formData.get('password') ?? '');
+            const role = String(formData.get('role') ?? '');
+            const request = submittedForm.dataset.authMode === 'register'
+                ? registerAccount(email, password, role)
+                : login(email, password);
 
-            login(email, password)
+            request
                 .then((user) => {
                     const homeView = getRoleHomeView(user.role);
 
