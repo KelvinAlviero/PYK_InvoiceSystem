@@ -3,10 +3,14 @@ import { SidebarComponent } from './Views/components/SideBar.js?v=2';
 import { addInvoice, attachInvoiceModalListeners, updateInvoice, UserView } from './Views/User/UserView.js?v=7';
 import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
+import { RegistrationView } from './Views/Registration/RegistrationView.js';
+import { collectRegistrationData } from './Views/Registration/registrationState.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
 import { getCurrentUser, login, logout, registerAccount } from './authService.js';
 const appContainer = document.getElementById('app');
+let registrationStep = 1;
+let registrationData = {};
 
 const roleHomeViews = {
     user: 'user',
@@ -39,7 +43,9 @@ function renderApp(activeView = 'user', authMode = 'login') {
     let verificationView = null;
 
     if (isLoginView) {
-        currentView = LoginView(authMode);
+        currentView = authMode === 'register'
+            ? RegistrationView(registrationStep, registrationData)
+            : LoginView();
     } else if (userRole) {
         if (activeView === 'profile') {
             currentView = UserProfileView();
@@ -87,10 +93,24 @@ function renderApp(activeView = 'user', authMode = 'login') {
     if (isLoginView) {
         const loginForm = document.querySelector(".login-card");
         const registerLink = document.querySelector(".login-register-link");
+        const isRegistering = loginForm?.dataset.authMode === 'register';
 
         registerLink?.addEventListener("click", (event) => {
             event.preventDefault();
-            renderApp('login', loginForm?.dataset.authMode === 'register' ? 'login' : 'register');
+            if (isRegistering) {
+                registrationStep = 1;
+                registrationData = {};
+                renderApp('login', 'login');
+            } else {
+                registrationStep = 1;
+                registrationData = {};
+                renderApp('login', 'register');
+            }
+        });
+
+        document.querySelector(".login-back-button")?.addEventListener("click", () => {
+            registrationStep -= 1;
+            renderApp('login', 'register');
         });
 
         loginForm?.addEventListener("submit", (event) => {
@@ -102,12 +122,23 @@ function renderApp(activeView = 'user', authMode = 'login') {
                 return;
             }
 
-            const formData = new FormData(submittedForm);
-            const email = String(formData.get('email') ?? '').trim();
-            const password = String(formData.get('password') ?? '');
-            const role = String(formData.get('role') ?? '');
-            const request = submittedForm.dataset.authMode === 'register'
-                ? registerAccount(email, password, role)
+            const currentData = collectRegistrationData(submittedForm);
+
+            if (isRegistering && registrationStep < 5) {
+                registrationData = { ...registrationData, ...currentData };
+                registrationStep += 1;
+                renderApp('login', 'register');
+                return;
+            }
+
+            const submittedData = isRegistering
+                ? { ...registrationData, ...currentData }
+                : currentData;
+            const email = String(submittedData.email ?? '').trim();
+            const password = String(submittedData.password ?? '');
+            const role = String(submittedData.role ?? '');
+            const request = isRegistering
+                ? registerAccount(email, password, role, submittedData)
                 : login(email, password);
 
             request

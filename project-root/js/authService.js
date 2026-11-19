@@ -34,8 +34,8 @@ export function login(email, password) {
     return requestAuth({ action: 'login', email, password });
 }
 
-export function registerAccount(email, password, role) {
-    return requestAuth({ action: 'register', email, password, role });
+export function registerAccount(email, password, role, registrationData) {
+    return requestAuth({ action: 'register', email, password, role, registrationData });
 }
 
 export function getCurrentUser() {

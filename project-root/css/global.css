@@ -270,7 +270,7 @@ body {
     width: 100%;
     min-height: 0;
     display: flex;
-    align-items: flex;
+    align-items: center;
     justify-content: center;
     min-width: 0;
     padding-block: 50px;   /* top and bottom */
@@ -310,7 +310,8 @@ body {
 }
 
 .login-card input,
-.login-card select {
+.login-card select,
+.login-card textarea {
     width: 100%;
     min-height: 42px;
     padding: 8px 12px;
@@ -319,6 +320,7 @@ body {
     background-color: var(--color-background);
     color: var(--color-accent-dark);
     font: inherit;
+    resize: vertical;
 }
 
 .login-card button {
@@ -337,6 +339,17 @@ body {
 .login-card select {
     background-color: var(--color-background);
     color: var(--color-accent-dark);
+}
+
+.login-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.login-checkbox input {
+    width: auto;
+    min-height: 0;
 }
 
 .login-card-fields {
@@ -359,6 +372,11 @@ body {
     color: var(--color-background);
     font-size: 13px;
     text-decoration: underline;
+}
+
+.login-step-count {
+    margin-inline: auto;
+    font-size: 12px;
 }
 
 .login-error {
