@@ -255,18 +255,40 @@ body {
     color: var(--color-background) !important;
 }
 
+.page-content:has(.login-page) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    padding: 0;
+    overflow: hidden;
+}
+
 .login-page {
-    display: grid;
-    min-height: calc(100vh - var(--top-bar-height) - var(--top-bar-border-height));
-    min-height: calc(100dvh - var(--top-bar-height) - var(--top-bar-border-height));
-    padding: var(--page-gutter);
-    place-items: center;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    align-items: flex;
+    justify-content: center;
+    min-width: 0;
+    padding-block: 50px;   /* top and bottom */
+    padding-inline: 50px;  /* left and right */
+    overflow: hidden;
     background-color: var(--color-background);
 }
 
 .login-card {
-    display: grid;
-    width: min(100%, 380px);
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 400px;
+    max-width: 800px;
+    max-height: 800px;
+    flex-direction: column;
+   
+    /*inner box*/
     padding: 32px;
     gap: 16px;
     border-radius: var(--box-radius);
@@ -282,11 +304,26 @@ body {
     font-weight: 700;
 }
 
+.login-field {
+    display: grid;
+    gap: 8px;
+}
+
 .login-card input,
-.login-card select,
-.login-card button {
+.login-card select {
+    width: 100%;
     min-height: 42px;
     padding: 8px 12px;
+    border: 0;
+    border-radius: 6px;
+    background-color: var(--color-background);
+    color: var(--color-accent-dark);
+    font: inherit;
+}
+
+.login-card button {
+    min-height: 42px;
+    padding: 8px 70px;
     border: 0;
     border-radius: 6px;
     font: inherit;
@@ -302,12 +339,20 @@ body {
     color: var(--color-accent-dark);
 }
 
+.login-card-fields {
+    display: grid;
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 16px;
+}
+
 .login-card-actions {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-top: 8px;
 }
 
 .login-register-link {
