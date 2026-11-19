@@ -99,23 +99,22 @@ export const registrationSteps = [
     },
     {
         title: 'Business details',
-        fields: (registrationData) => `
-            <div class="login-field" ${registrationData.businessType === 'Business 2' ? 'hidden' : ''}>
-                <label for="business-one-document">Business 1 document (PDF)</label>
-                <input id="business-one-document" name="businessOneDocument" type="file" accept=".pdf,application/pdf" ${registrationData.businessType === 'Business 1' ? 'required' : ''}>
-            </div>
-            <div class="login-field" ${registrationData.businessType === 'Business 1' ? 'hidden' : ''}>
-                <label for="business-two-option">Business 2 option</label>
-                <select id="business-two-option" name="businessTwoOption" ${registrationData.businessType === 'Business 2' ? 'required' : ''}>
-                    <option value="" selected disabled>Choose an option</option>
-                    <option value="Option 1">Option 1</option>
-                    <option value="Option 2">Option 2</option>
-                </select>
-            </div>
-            <div class="login-field">
-                <label for="business-details-document">Additional document (PDF)</label>
-                <input id="business-details-document" name="businessDetailsDocument" type="file" accept=".pdf,application/pdf" required>
-            </div>
-        `
+        fields: (registrationData) => registrationData.businessType === 'Business 2'
+            ? `
+                <div class="login-field">
+                    <label for="business-two-option">Business 2 option</label>
+                    <select id="business-two-option" name="businessTwoOption" required>
+                        <option value="" selected disabled>Choose an option</option>
+                        <option value="Option 1">Option 1</option>
+                        <option value="Option 2">Option 2</option>
+                    </select>
+                </div>
+            `
+            : `
+                <div class="login-field">
+                    <label for="business-one-document">Business 1 document (PDF)</label>
+                    <input id="business-one-document" name="businessOneDocument" type="file" accept=".pdf,application/pdf" required>
+                </div>
+            `
     }
 ];
