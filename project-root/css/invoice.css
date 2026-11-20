@@ -619,3 +619,147 @@
         flex-wrap: wrap;
     }
 }
+
+
+/* Treasury payment confirmation and immediate reject/cancel action */
+.transfer-form-actions {
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.transfer-reject-button {
+    min-height: 32px;
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 75%);
+    border-radius: 18px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 9px;
+}
+
+.transfer-reject-button:hover:not(:disabled) {
+    background: rgb(255 255 255 / 12%);
+}
+
+.transfer-submit-button:disabled,
+.transfer-reject-button:disabled {
+    cursor: not-allowed;
+    opacity: .65;
+}
+
+.transfer-feedback.is-danger {
+    display: block;
+    color: #ffd3d9;
+}
+
+.payment-confirmation-backdrop[hidden] {
+    display: none;
+}
+
+.payment-confirmation-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    padding: 20px;
+    place-items: center;
+    background: rgb(20 0 5 / 64%);
+}
+
+.payment-confirmation-dialog {
+    width: min(100%, 420px);
+    padding: 28px 26px 24px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 16px;
+    background: #fff;
+    color: #292929;
+    box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
+    text-align: center;
+    animation: confirmation-pop-in 160ms ease-out;
+}
+
+.payment-confirmation-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 13px;
+    place-items: center;
+    border: 2px solid var(--color-accent);
+    border-radius: 50%;
+    color: var(--color-accent);
+    font-size: 25px;
+    font-weight: 700;
+}
+
+.payment-confirmation-dialog h2 {
+    margin: 0 0 10px;
+    color: #292929;
+    font-size: 18px;
+}
+
+.payment-confirmation-dialog p {
+    margin: 0;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.payment-confirmation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.payment-confirmation-actions button {
+    min-width: 112px;
+    min-height: 38px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 20px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.payment-confirmation-cancel {
+    background: #ededed;
+    color: #444;
+}
+
+.payment-confirmation-accept {
+    background: var(--color-success);
+    color: #fff;
+}
+
+.payment-confirmation-actions button:focus-visible,
+.transfer-reject-button:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+}
+
+@keyframes confirmation-pop-in {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 480px) {
+    .transfer-form-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .transfer-form-actions button {
+        width: 100%;
+        min-height: 38px;
+    }
+
+    .payment-confirmation-dialog {
+        padding: 24px 18px 20px;
+    }
+}
