@@ -309,6 +309,20 @@ body {
     gap: 8px;
 }
 
+.login-fieldset {
+    display: grid;
+    min-width: 0;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid rgb(255 255 255 / 45%);
+    border-radius: 6px;
+}
+
+.login-fieldset legend {
+    padding: 0 6px;
+    font-weight: 700;
+}
+
 .login-card input,
 .login-card select,
 .login-card textarea {
@@ -358,6 +372,17 @@ body {
     flex: 1 1 auto;
     min-height: 0;
     gap: 16px;
+}
+
+.login-page:has(.login-card[data-auth-mode="register"]) {
+    align-items: flex-start;
+    overflow-y: auto;
+}
+
+.login-card[data-auth-mode="register"] {
+    height: auto;
+    max-height: none;
+    margin-block: auto;
 }
 
 .login-card-actions {

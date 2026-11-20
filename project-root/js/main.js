@@ -12,6 +12,21 @@ const appContainer = document.getElementById('app');
 let registrationStep = 1;
 let registrationData = {};
 
+const locationOptions = {
+    'Jawa Barat': {
+        cities: {
+            'Kota Bandung': ['Coblong', 'Sukajadi'],
+            'Kabupaten Bandung': ['Baleendah', 'Cileunyi']
+        }
+    },
+    'Jawa Tengah': {
+        cities: {
+            'Kota Semarang': ['Banyumanik', 'Tembalang'],
+            'Kabupaten Semarang': ['Bergas', 'Ungaran']
+        }
+    }
+};
+
 const roleHomeViews = {
     user: 'user',
     verification: 'ap-verification',
@@ -21,6 +36,73 @@ const roleHomeViews = {
 
 function getRoleHomeView(role) {
     return roleHomeViews[String(role).trim().toLowerCase()] ?? null;
+}
+
+function setSelectOptions(select, options, placeholder) {
+    select.innerHTML = `
+        <option value="" selected disabled>${placeholder}</option>
+        ${options.map((option) => `<option value="${option}">${option}</option>`).join('')}
+    `;
+    select.disabled = false;
+}
+
+function attachLocationListeners() {
+    const provinceSelect = document.querySelector('#company-province');
+    const citySelect = document.querySelector('#company-city');
+    const villageSelect = document.querySelector('#company-village');
+
+    if (!provinceSelect || !citySelect || !villageSelect) {
+        return;
+    }
+
+    provinceSelect.addEventListener('change', () => {
+        const province = locationOptions[provinceSelect.value];
+        const cities = Object.keys(province?.cities ?? {});
+
+        citySelect.disabled = true;
+        villageSelect.disabled = true;
+        villageSelect.innerHTML = '<option value="" selected disabled>Choose a village</option>';
+
+        if (cities.length) {
+            setSelectOptions(citySelect, cities, 'Choose a city/regency');
+        } else {
+            citySelect.innerHTML = '<option value="" selected disabled>No locations available</option>';
+        }
+    });
+
+    citySelect.addEventListener('change', () => {
+        const province = locationOptions[provinceSelect.value];
+        const villages = province?.cities?.[citySelect.value] ?? [];
+
+        setSelectOptions(villageSelect, villages, 'Choose a village');
+    });
+}
+
+function restoreRegistrationFields() {
+    Object.entries(registrationData).forEach(([name, value]) => {
+        const field = document.querySelector(`[name="${name}"]`);
+
+        if (!field || field.type === 'file') {
+            return;
+        }
+
+        if (field.type === 'checkbox') {
+            field.checked = value === 'on' || value === true;
+        } else {
+            field.value = value;
+        }
+    });
+
+    const provinceSelect = document.querySelector('#company-province');
+    const citySelect = document.querySelector('#company-city');
+    const villageSelect = document.querySelector('#company-village');
+
+    if (provinceSelect?.value && citySelect && villageSelect) {
+        provinceSelect.dispatchEvent(new Event('change'));
+        citySelect.value = registrationData.cityRegency ?? '';
+        citySelect.dispatchEvent(new Event('change'));
+        villageSelect.value = registrationData.village ?? '';
+    }
 }
 
 function renderApp(activeView = 'user', authMode = 'login') {
@@ -71,6 +153,12 @@ function renderApp(activeView = 'user', authMode = 'login') {
     sidebar?.attachListeners();
     treasuryView?.attachListeners();
     verificationView?.attachListeners();
+    if (isLoginView && authMode === 'register' && registrationStep === 2) {
+        attachLocationListeners();
+    }
+    if (isLoginView && authMode === 'register') {
+        restoreRegistrationFields();
+    }
     if (activeView === 'user') {
         attachInvoiceModalListeners((invoice, isResubmission) => {
             if (isResubmission) {
