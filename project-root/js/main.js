@@ -5,6 +5,7 @@ import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
 import { RegistrationView } from './Views/Registration/RegistrationView.js';
 import { collectRegistrationData } from './Views/Registration/registrationState.js';
+import { submitRegistration } from './Views/Registration/registrationService.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
 import { getCurrentUser, login, logout, registerAccount } from './authService.js';
@@ -201,7 +202,7 @@ function renderApp(activeView = 'user', authMode = 'login') {
             renderApp('login', 'register');
         });
 
-        loginForm?.addEventListener("submit", (event) => {
+        loginForm?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const submittedForm = event.currentTarget;
             const errorMessage = document.querySelector(".login-error");
@@ -210,41 +211,40 @@ function renderApp(activeView = 'user', authMode = 'login') {
                 return;
             }
 
-            const currentData = collectRegistrationData(submittedForm);
+            try {
+                const currentData = await collectRegistrationData(submittedForm);
 
-            if (isRegistering && registrationStep < 5) {
-                registrationData = { ...registrationData, ...currentData };
-                registrationStep += 1;
-                renderApp('login', 'register');
-                return;
+                if (isRegistering && registrationStep < 5) {
+                    registrationData = { ...registrationData, ...currentData };
+                    registrationStep += 1;
+                    renderApp('login', 'register');
+                    return;
+                }
+
+                const submittedData = isRegistering
+                    ? { ...registrationData, ...currentData }
+                    : currentData;
+                const request = isRegistering
+                    ? submitRegistration(submittedData)
+                    : login(
+                        String(submittedData.email ?? '').trim(),
+                        String(submittedData.password ?? '')
+                    );
+
+                const user = await request;
+                const homeView = getRoleHomeView(user.role);
+
+                if (!homeView) {
+                    throw new Error(`No dashboard is configured for the "${user.role}" role.`);
+                }
+
+                renderApp(homeView);
+            } catch (error) {
+                if (errorMessage) {
+                    errorMessage.textContent = error.message;
+                    errorMessage.hidden = false;
+                }
             }
-
-            const submittedData = isRegistering
-                ? { ...registrationData, ...currentData }
-                : currentData;
-            const email = String(submittedData.email ?? '').trim();
-            const password = String(submittedData.password ?? '');
-            const role = String(submittedData.role ?? '');
-            const request = isRegistering
-                ? registerAccount(email, password, role, submittedData)
-                : login(email, password);
-
-            request
-                .then((user) => {
-                    const homeView = getRoleHomeView(user.role);
-
-                    if (!homeView) {
-                        throw new Error(`No dashboard is configured for the "${user.role}" role.`);
-                    }
-
-                    renderApp(homeView);
-                })
-                .catch((error) => {
-                    if (errorMessage) {
-                        errorMessage.textContent = error.message;
-                        errorMessage.hidden = false;
-                    }
-                });
         });
     }
 }
