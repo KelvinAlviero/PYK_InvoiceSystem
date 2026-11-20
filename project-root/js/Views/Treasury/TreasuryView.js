@@ -84,11 +84,27 @@ function renderInvoiceDetails(invoice) {
                 <p class="transfer-feedback" id="transfer-feedback" role="status" aria-live="polite"></p>
 
                 <div class="transfer-form-actions">
+                    <button class="transfer-reject-button" type="button">
+                        Tolak / Cancel
+                    </button>
                     <button class="transfer-submit-button" type="submit">
-                        Bayar Dan Kirim Email Bukti
+                        Bayar dan Kirim
                     </button>
                 </div>
             </form>
+
+            <!-- Confirmation pop-up shown after the payment form passes validation. -->
+            <div class="payment-confirmation-backdrop" id="payment-confirmation-modal" hidden>
+                <section class="payment-confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-confirmation-title" aria-describedby="payment-confirmation-message">
+                    <div class="payment-confirmation-icon" aria-hidden="true">?</div>
+                    <h2 id="payment-confirmation-title">Konfirmasi Pembayaran</h2>
+                    <p id="payment-confirmation-message">Apakah Anda yakin? Pastikan semua informasi sudah benar sebelum mengirimkannya.</p>
+                    <div class="payment-confirmation-actions">
+                        <button class="payment-confirmation-cancel" type="button">Batal</button>
+                        <button class="payment-confirmation-accept" type="button">Ya, Kirim</button>
+                    </div>
+                </section>
+            </div>
         </div>
     `;
 }
@@ -140,10 +156,34 @@ export function TreasuryView() {
         const preview = form.querySelector('#proof-preview');
         const feedback = form.querySelector('#transfer-feedback');
         const submitButton = form.querySelector('.transfer-submit-button');
+        const rejectButton = form.querySelector('.transfer-reject-button');
+        const modal = detailBody.querySelector('#payment-confirmation-modal');
+        const acceptButton = modal.querySelector('.payment-confirmation-accept');
+        const modalCancelButton = modal.querySelector('.payment-confirmation-cancel');
         let previewUrl = null;
+        let paymentConfirmed = false;
+
+        const closeConfirmation = () => {
+            modal.hidden = true;
+            submitButton.focus();
+        };
+
+        const resetConfirmationState = () => {
+            if (paymentConfirmed) {
+                paymentConfirmed = false;
+                submitButton.disabled = false;
+                submitButton.textContent = 'Bayar dan Kirim';
+            }
+        };
+
+        const showFeedback = (message, type = 'is-info') => {
+            feedback.textContent = message;
+            feedback.className = `transfer-feedback ${type}`;
+        };
 
         fileInput.addEventListener('change', () => {
             const file = fileInput.files?.[0];
+            resetConfirmationState();
             feedback.textContent = '';
             feedback.className = 'transfer-feedback';
 
@@ -207,10 +247,12 @@ export function TreasuryView() {
 
         form.querySelectorAll('input, select').forEach((field) => {
             field.addEventListener('input', () => {
+                resetConfirmationState();
                 feedback.textContent = '';
                 feedback.className = 'transfer-feedback';
             });
             field.addEventListener('change', () => {
+                resetConfirmationState();
                 feedback.textContent = '';
                 feedback.className = 'transfer-feedback';
             });
@@ -223,9 +265,51 @@ export function TreasuryView() {
             }
             if (!form.reportValidity()) return;
 
-            feedback.textContent = 'Data pembayaran lengkap dan siap diproses. Pengiriman email dan proses pembayaran memerlukan sambungan backend.';
-            feedback.className = 'transfer-feedback is-info';
-            submitButton.textContent = 'Data Pembayaran Siap';
+            modal.hidden = false;
+            modalCancelButton.focus();
+        });
+
+        acceptButton.addEventListener('click', () => {
+            modal.hidden = true;
+            paymentConfirmed = true;
+            showFeedback(
+                'Konfirmasi diterima. Data pembayaran sudah lengkap dan siap diproses. Pemrosesan pembayaran serta pengiriman email tetap memerlukan sambungan backend.',
+                'is-info'
+            );
+            submitButton.textContent = 'Konfirmasi Diterima';
+            submitButton.disabled = true;
+            rejectButton.focus();
+        });
+
+        modalCancelButton.addEventListener('click', closeConfirmation);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) closeConfirmation();
+        });
+
+        modal.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeConfirmation();
+            }
+        });
+
+        // Reject/cancel is an immediate front-end action, as requested.
+        rejectButton.addEventListener('click', () => {
+            const cardStatus = document.querySelector('.invoice-card-status');
+            if (cardStatus) cardStatus.textContent = 'Ditolak / Cancel';
+
+            treasuryInvoice.status = 'Ditolak / Cancel';
+            showFeedback(
+                'Tagihan ditolak/dibatalkan pada tampilan ini. Status belum tersimpan ke database karena backend belum terhubung.',
+                'is-danger'
+            );
+
+            form.querySelectorAll('input, select').forEach((field) => {
+                field.disabled = true;
+            });
+            submitButton.disabled = true;
+            rejectButton.disabled = true;
+            rejectButton.textContent = 'Tagihan Dibatalkan';
         });
     }
 
