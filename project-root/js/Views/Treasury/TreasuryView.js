@@ -3,34 +3,92 @@ const treasuryInvoice = {
     vendor: 'RM Payakumbuh Ciater',
     purchaseOrder: 'PO-2026-7715',
     amount: 'Rp 48.500.000',
-    status: 'AP Verified'
+    status: 'AP Verified',
+    bankName: 'BCA',
+    bankAccount: '83012938131',
+    accountName: 'PT Sumber Makmur Jaya'
 };
 
 function renderInvoiceDetails(invoice) {
     return `
-        <div class="invoice-detail-content">
-            <div class="invoice-detail-heading">
-                <div>
-                    <p class="detail-eyebrow">INFORMASI TAGIHAN</p>
-                    <h2>${invoice.documentNumber}</h2>
+        <div class="treasury-payment-content">
+            <div class="treasury-invoice-summary">
+                <div class="treasury-summary-main">
+                    <p class="treasury-document-number">${invoice.documentNumber}</p>
+                    <div class="treasury-vendor-route">
+                        <strong>${invoice.vendor}</strong>
+                        <span aria-hidden="true">&#8594;</span>
+                        <strong>${invoice.vendor}</strong>
+                    </div>
+                    <p class="treasury-bank-detail">
+                        Bank: ${invoice.bankName} ${invoice.bankAccount} AN ${invoice.accountName}
+                    </p>
+                    <p class="treasury-po-detail">PO: ${invoice.purchaseOrder}</p>
                 </div>
-                <span class="invoice-status">${invoice.status}</span>
-            </div>
-
-            <div class="invoice-detail-grid">
-                <div class="detail-field">
-                    <span>Vendor</span>
-                    <strong>${invoice.vendor}</strong>
-                </div>
-                <div class="detail-field">
-                    <span>Purchase Order</span>
-                    <strong>${invoice.purchaseOrder}</strong>
-                </div>
-                <div class="detail-field detail-field-amount">
-                    <span>Total Tagihan</span>
+                <div class="treasury-summary-amount">
+                    <span>Jumlah Pembayaran</span>
                     <strong>${invoice.amount}</strong>
                 </div>
             </div>
+
+            <form class="transfer-form" id="transfer-form" novalidate>
+                <h2>FORM TRANSFER</h2>
+
+                <div class="transfer-form-grid">
+                    <label class="transfer-field">
+                        <span>Metode Pembayaran</span>
+                        <select id="payment-method" name="paymentMethod" required>
+                            <option value="Bank Transfer (RTGS / SKN)" selected>Bank Transfer (RTGS / SKN)</option>
+                            <option value="Bank Transfer (BI-FAST)">Bank Transfer (BI-FAST)</option>
+                            <option value="Virtual Account">Virtual Account</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </label>
+
+                    <label class="transfer-field">
+                        <span>Nomor Referensi Bank / No. Resi</span>
+                        <input
+                            id="bank-reference"
+                            name="bankReference"
+                            type="text"
+                            placeholder="Masukkan nomor referensi"
+                            autocomplete="off"
+                            maxlength="80"
+                            required
+                        >
+                    </label>
+
+                    <div class="transfer-proof-field">
+                        <label class="transfer-field-label" for="proof-file">
+                            Lampiran Bukti Pembayaran (PDF/IMAGE)
+                        </label>
+                        <div class="proof-file-card">
+                            <span class="proof-file-type" id="proof-file-type" aria-hidden="true">PDF</span>
+                            <span class="proof-file-name" id="proof-file-name">Belum ada file dipilih</span>
+                            <span class="proof-file-status" id="proof-file-status">Required</span>
+                            <label class="proof-choose-button" for="proof-file">Pilih File</label>
+                            <input
+                                class="visually-hidden"
+                                id="proof-file"
+                                name="paymentProof"
+                                type="file"
+                                accept="application/pdf,image/png,image/jpeg,image/webp"
+                                required
+                            >
+                        </div>
+                        <div class="proof-preview" id="proof-preview" hidden></div>
+                        <p class="proof-help">Format yang didukung: PDF, PNG, JPG, WEBP. Maksimal 10 MB.</p>
+                    </div>
+                </div>
+
+                <p class="transfer-feedback" id="transfer-feedback" role="status" aria-live="polite"></p>
+
+                <div class="transfer-form-actions">
+                    <button class="transfer-submit-button" type="submit">
+                        Bayar Dan Kirim Email Bukti
+                    </button>
+                </div>
+            </form>
         </div>
     `;
 }
@@ -71,6 +129,106 @@ export function TreasuryView() {
         </section>
     `;
 
+    function attachPaymentFormListeners(detailBody) {
+        const form = detailBody.querySelector('#transfer-form');
+        if (!form) return;
+
+        const fileInput = form.querySelector('#proof-file');
+        const fileName = form.querySelector('#proof-file-name');
+        const fileType = form.querySelector('#proof-file-type');
+        const fileStatus = form.querySelector('#proof-file-status');
+        const preview = form.querySelector('#proof-preview');
+        const feedback = form.querySelector('#transfer-feedback');
+        const submitButton = form.querySelector('.transfer-submit-button');
+        let previewUrl = null;
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files?.[0];
+            feedback.textContent = '';
+            feedback.className = 'transfer-feedback';
+
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
+            preview.replaceChildren();
+            preview.hidden = true;
+
+            if (!file) {
+                fileName.textContent = 'Belum ada file dipilih';
+                fileType.textContent = 'PDF';
+                fileStatus.textContent = 'Required';
+                fileStatus.classList.remove('is-ready');
+                fileInput.setCustomValidity('Lampirkan bukti pembayaran terlebih dahulu.');
+                return;
+            }
+
+            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+            const isImage = file.type.startsWith('image/') && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type);
+            if (!isPdf && !isImage) {
+                fileInput.value = '';
+                fileInput.setCustomValidity('Gunakan file PDF, PNG, JPG, atau WEBP.');
+                fileInput.reportValidity();
+                fileName.textContent = 'Format file tidak didukung';
+                fileStatus.textContent = 'Invalid';
+                fileStatus.classList.remove('is-ready');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                fileInput.value = '';
+                fileInput.setCustomValidity('Ukuran file maksimal 10 MB.');
+                fileInput.reportValidity();
+                fileName.textContent = 'File melebihi 10 MB';
+                fileStatus.textContent = 'Too large';
+                fileStatus.classList.remove('is-ready');
+                return;
+            }
+
+            fileInput.setCustomValidity('');
+            fileName.textContent = file.name;
+            fileType.textContent = isPdf ? 'PDF' : file.type === 'image/png' ? 'PNG' : file.type === 'image/webp' ? 'WEBP' : 'JPG';
+            fileStatus.textContent = 'Ready';
+            fileStatus.classList.add('is-ready');
+
+            previewUrl = URL.createObjectURL(file);
+            if (isImage) {
+                const image = document.createElement('img');
+                image.src = previewUrl;
+                image.alt = 'Preview bukti pembayaran';
+                preview.append(image);
+            } else {
+                const pdfMessage = document.createElement('span');
+                pdfMessage.textContent = `PDF siap dilampirkan: ${file.name}`;
+                preview.append(pdfMessage);
+            }
+            preview.hidden = false;
+        });
+
+        form.querySelectorAll('input, select').forEach((field) => {
+            field.addEventListener('input', () => {
+                feedback.textContent = '';
+                feedback.className = 'transfer-feedback';
+            });
+            field.addEventListener('change', () => {
+                feedback.textContent = '';
+                feedback.className = 'transfer-feedback';
+            });
+        });
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!fileInput.files?.length) {
+                fileInput.setCustomValidity('Lampirkan bukti pembayaran terlebih dahulu.');
+            }
+            if (!form.reportValidity()) return;
+
+            feedback.textContent = 'Data pembayaran lengkap dan siap diproses. Pengiriman email dan proses pembayaran memerlukan sambungan backend.';
+            feedback.className = 'transfer-feedback is-info';
+            submitButton.textContent = 'Data Pembayaran Siap';
+        });
+    }
+
     function attachListeners() {
         const invoiceCard = document.querySelector('.invoice-card');
         const detailBody = document.querySelector('.invoice-detail-body');
@@ -80,7 +238,9 @@ export function TreasuryView() {
         invoiceCard.addEventListener('click', () => {
             invoiceCard.classList.add('is-selected');
             invoiceCard.setAttribute('aria-pressed', 'true');
+            detailBody.classList.add('has-payment-form');
             detailBody.innerHTML = renderInvoiceDetails(treasuryInvoice);
+            attachPaymentFormListeners(detailBody);
         });
     }
 
