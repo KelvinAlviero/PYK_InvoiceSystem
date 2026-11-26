@@ -1,4 +1,23 @@
-export function UserProfileView() {
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+const ROLE_LABELS = {
+    vendor: 'Vendor',
+    verification: 'AP Verification',
+    treasury: 'Treasury',
+    admin: 'Admin'
+};
+
+// user: the logged-in user from the API ({ id, email, role, company }).
+export function UserProfileView(user) {
+    const company = user?.company;
+
     return `
         <section class="profile-page-box" aria-label="User profile">
             <header class="profile-page-header">
@@ -9,29 +28,23 @@ export function UserProfileView() {
                 <div class="profile-page-details">
                     <dl>
                         <div>
-                            <dt>User name</dt>
-                            <dd>John Doe</dd>
+                            <dt>Email</dt>
+                            <dd>${escapeHtml(user?.email)}</dd>
                         </div>
+                        <div>
+                            <dt>Role</dt>
+                            <dd>${escapeHtml(ROLE_LABELS[user?.role] ?? user?.role)}</dd>
+                        </div>
+                        ${company ? `
                         <div>
                             <dt>Company</dt>
-                            <dd>PYK Company</dd>
+                            <dd>${escapeHtml(company.name)}</dd>
                         </div>
                         <div>
-                            <dt>Email</dt>
-                            <dd>john.doe@pyk.example</dd>
+                            <dt>Vendor ID</dt>
+                            <dd>${escapeHtml(company.vendorCode)}</dd>
                         </div>
-                        <div>
-                            <dt>ID</dt>
-                            <dd>PYK-0001</dd>
-                        </div>
-                        <div>
-                            <dt>Vendor type</dt>
-                            <dd>Supplier</dd>
-                        </div>
-                        <div>
-                            <dt>Address</dt>
-                            <dd>123 Example Street, Jakarta</dd>
-                        </div>
+                        ` : ''}
                     </dl>
                 </div>
                 <div class="profile-page-avatar" aria-label="User profile picture" role="img"></div>

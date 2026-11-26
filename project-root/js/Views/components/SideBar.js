@@ -1,4 +1,16 @@
-export function SidebarComponent(onProfileOpen) {
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+// user: the logged-in user from the API, shown on the profile card.
+export function SidebarComponent(onProfileOpen, user = null) {
+    const displayName = user?.email ?? '';
+    const displayCompany = user?.company?.name ?? (user ? 'PYK staff' : '');
     const html = `
         <div class="sidebar-backdrop" aria-hidden="true"></div>
         <aside class="sidebar" id="page-sidebar" aria-label="Sidebar" aria-hidden="true" inert>
@@ -8,8 +20,8 @@ export function SidebarComponent(onProfileOpen) {
                 <button class="sidebar-item profile-card" type="button" aria-label="Open profile">
                     <div class="profile-avatar" aria-hidden="true"></div>
                     <div class="profile-meta">
-                        <span class="profile-name">John Doe</span>
-                        <span class="profile-company">PYK Company</span>
+                        <span class="profile-name">${escapeHtml(displayName)}</span>
+                        <span class="profile-company">${escapeHtml(displayCompany)}</span>
                     </div>
                 </button>
 

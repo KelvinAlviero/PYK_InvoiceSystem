@@ -1,9 +1,16 @@
-import { registerAccount } from '../../authService.js';
+import { registerVendor } from '../../authService.js';
 
+// Builds the multipart request from everything collected across the 5 steps.
 export function submitRegistration(registrationData) {
-    const email = String(registrationData.email ?? '').trim();
-    const password = String(registrationData.password ?? '');
-    const role = String(registrationData.role ?? '');
+    const formData = new FormData();
 
-    return registerAccount(email, password, role, registrationData);
+    for (const [key, value] of Object.entries(registrationData)) {
+        if (value instanceof File) {
+            formData.append(key, value, value.name);
+        } else if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+        }
+    }
+
+    return registerVendor(formData);
 }

@@ -8,46 +8,67 @@ import { collectRegistrationData } from './Views/Registration/registrationState.
 import { submitRegistration } from './Views/Registration/registrationService.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
-import { getCurrentUser, login, logout, registerAccount } from './authService.js';
+import { apiRequest, getCurrentUser, initAuth, login, logout } from './authService.js';
 const appContainer = document.getElementById('app');
 let registrationStep = 1;
 let registrationData = {};
+let loginNotice = '';
 
-const locationOptions = {
-    'Jawa Barat': {
-        cities: {
-            'Kota Bandung': ['Coblong', 'Sukajadi'],
-            'Kabupaten Bandung': ['Baleendah', 'Cileunyi']
-        }
-    },
-    'Jawa Tengah': {
-        cities: {
-            'Kota Semarang': ['Banyumanik', 'Tembalang'],
-            'Kabupaten Semarang': ['Bergas', 'Ungaran']
-        }
-    }
-};
-
+// Which views each role may open, and where each lands after login. The API enforces
+// the same rules server-side; this only keeps people off screens they cannot use.
 const roleHomeViews = {
-    user: 'user',
+    vendor: 'user',
     verification: 'ap-verification',
     treasury: 'treasury',
-    admin: 'admin'
+    admin: 'ap-verification'
+};
+
+const roleAllowedViews = {
+    vendor: ['user', 'profile'],
+    verification: ['ap-verification', 'profile'],
+    treasury: ['treasury', 'profile'],
+    admin: ['user', 'ap-verification', 'treasury', 'profile']
 };
 
 function getRoleHomeView(role) {
-    return roleHomeViews[String(role).trim().toLowerCase()] ?? null;
+    return roleHomeViews[role] ?? null;
 }
 
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+// options: [{ id, name }] from the regions API. Values are ids; labels are names.
 function setSelectOptions(select, options, placeholder) {
     select.innerHTML = `
-        <option value="" selected disabled>${placeholder}</option>
-        ${options.map((option) => `<option value="${option}">${option}</option>`).join('')}
+        <option value="" selected disabled>${escapeHtml(placeholder)}</option>
+        ${options.map((option) => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.name)}</option>`).join('')}
     `;
-    select.disabled = false;
+    select.disabled = options.length === 0;
 }
 
-function attachLocationListeners() {
+function resetSelect(select, placeholder) {
+    select.innerHTML = `<option value="" selected disabled>${escapeHtml(placeholder)}</option>`;
+    select.disabled = true;
+}
+
+async function loadRegionOptions(select, path, placeholder) {
+    try {
+        const options = await apiRequest(path);
+        setSelectOptions(select, options, options.length ? placeholder : 'No locations available');
+    } catch {
+        resetSelect(select, 'Could not load locations');
+    }
+}
+
+// Cascading Provinsi -> Kota/Kabupaten -> Kelurahan/Desa, restoring earlier choices
+// when the user comes back to this step.
+async function attachLocationListeners() {
     const provinceSelect = document.querySelector('#company-province');
     const citySelect = document.querySelector('#company-city');
     const villageSelect = document.querySelector('#company-village');
@@ -56,54 +77,64 @@ function attachLocationListeners() {
         return;
     }
 
-    provinceSelect.addEventListener('change', () => {
-        const province = locationOptions[provinceSelect.value];
-        const cities = Object.keys(province?.cities ?? {});
+    async function loadCities(provinceId) {
+        resetSelect(citySelect, 'Loading...');
+        resetSelect(villageSelect, 'Choose a village');
+        await loadRegionOptions(citySelect, `/regions/provinces/${encodeURIComponent(provinceId)}/cities`, 'Choose a city/regency');
+    }
 
-        citySelect.disabled = true;
-        villageSelect.disabled = true;
-        villageSelect.innerHTML = '<option value="" selected disabled>Choose a village</option>';
+    async function loadVillages(cityId) {
+        resetSelect(villageSelect, 'Loading...');
+        await loadRegionOptions(villageSelect, `/regions/cities/${encodeURIComponent(cityId)}/villages`, 'Choose a village');
+    }
 
-        if (cities.length) {
-            setSelectOptions(citySelect, cities, 'Choose a city/regency');
-        } else {
-            citySelect.innerHTML = '<option value="" selected disabled>No locations available</option>';
+    provinceSelect.addEventListener('change', () => loadCities(provinceSelect.value));
+    citySelect.addEventListener('change', () => loadVillages(citySelect.value));
+
+    await loadRegionOptions(provinceSelect, '/regions/provinces', 'Choose a province');
+
+    const { province, cityRegency, village } = registrationData;
+    if (province) {
+        provinceSelect.value = province;
+        await loadCities(province);
+        if (cityRegency) {
+            citySelect.value = cityRegency;
+            await loadVillages(cityRegency);
+            villageSelect.value = village ?? '';
         }
-    });
-
-    citySelect.addEventListener('change', () => {
-        const province = locationOptions[provinceSelect.value];
-        const villages = province?.cities?.[citySelect.value] ?? [];
-
-        setSelectOptions(villageSelect, villages, 'Choose a village');
-    });
+    }
 }
 
 function restoreRegistrationFields() {
     Object.entries(registrationData).forEach(([name, value]) => {
         const field = document.querySelector(`[name="${name}"]`);
 
-        if (!field || field.type === 'file') {
-            return;
+        if (!field || field.tagName === 'SELECT' && field.disabled) {
+            return; // region selects are restored by attachLocationListeners
         }
 
-        if (field.type === 'checkbox') {
+        if (field.type === 'file') {
+            // Browsers cannot pre-fill file inputs; keep the earlier file unless replaced.
+            if (value instanceof File) {
+                field.required = false;
+                field.insertAdjacentHTML(
+                    'afterend',
+                    `<p class="login-file-kept">Selected: ${escapeHtml(value.name)} (choose again to replace)</p>`
+                );
+            }
+        } else if (field.type === 'checkbox') {
             field.checked = value === 'on' || value === true;
         } else {
             field.value = value;
         }
     });
+}
 
-    const provinceSelect = document.querySelector('#company-province');
-    const citySelect = document.querySelector('#company-city');
-    const villageSelect = document.querySelector('#company-village');
-
-    if (provinceSelect?.value && citySelect && villageSelect) {
-        provinceSelect.dispatchEvent(new Event('change'));
-        citySelect.value = registrationData.cityRegency ?? '';
-        citySelect.dispatchEvent(new Event('change'));
-        villageSelect.value = registrationData.village ?? '';
-    }
+function goToLogin(notice = '') {
+    registrationStep = 1;
+    registrationData = {};
+    loginNotice = notice;
+    renderApp('login', 'login');
 }
 
 function renderApp(activeView = 'user', authMode = 'login') {
@@ -120,7 +151,18 @@ function renderApp(activeView = 'user', authMode = 'login') {
     }
 
     const userRole = currentUser?.role;
-    const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'));
+
+    if (!isLoginView && !roleAllowedViews[userRole]?.includes(activeView)) {
+        const homeView = getRoleHomeView(userRole);
+        if (!homeView) {
+            renderApp('login');
+            return;
+        }
+        renderApp(homeView);
+        return;
+    }
+
+    const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'), currentUser);
     let currentView = '';
     let treasuryView = null;
     let verificationView = null;
@@ -128,10 +170,11 @@ function renderApp(activeView = 'user', authMode = 'login') {
     if (isLoginView) {
         currentView = authMode === 'register'
             ? RegistrationView(registrationStep, registrationData)
-            : LoginView();
+            : LoginView(loginNotice);
+        loginNotice = '';
     } else if (userRole) {
         if (activeView === 'profile') {
-            currentView = UserProfileView();
+            currentView = UserProfileView(currentUser);
         } else if (activeView === 'treasury') {
             treasuryView = TreasuryView();
             currentView = treasuryView.html;
@@ -154,11 +197,11 @@ function renderApp(activeView = 'user', authMode = 'login') {
     sidebar?.attachListeners();
     treasuryView?.attachListeners();
     verificationView?.attachListeners();
-    if (isLoginView && authMode === 'register' && registrationStep === 2) {
-        attachLocationListeners();
-    }
     if (isLoginView && authMode === 'register') {
         restoreRegistrationFields();
+    }
+    if (isLoginView && authMode === 'register' && registrationStep === 2) {
+        attachLocationListeners();
     }
     if (activeView === 'user') {
         attachInvoiceModalListeners((invoice, isResubmission) => {
@@ -172,10 +215,10 @@ function renderApp(activeView = 'user', authMode = 'login') {
     }
 
     if (activeView === 'profile') {
-        document.querySelector(".back-home-button")?.addEventListener("click", () => renderApp('user'));
-        document.querySelector(".logout-button")?.addEventListener("click", () => {
-            logout();
-            renderApp('login');
+        document.querySelector(".back-home-button")?.addEventListener("click", () => renderApp(getRoleHomeView(userRole)));
+        document.querySelector(".logout-button")?.addEventListener("click", async () => {
+            await logout();
+            goToLogin();
         });
     }
 
@@ -186,22 +229,20 @@ function renderApp(activeView = 'user', authMode = 'login') {
 
         registerLink?.addEventListener("click", (event) => {
             event.preventDefault();
-            if (isRegistering) {
-                registrationStep = 1;
-                registrationData = {};
-                renderApp('login', 'login');
-            } else {
-                registrationStep = 1;
-                registrationData = {};
-                renderApp('login', 'register');
-            }
+            registrationStep = 1;
+            registrationData = {};
+            renderApp('login', isRegistering ? 'login' : 'register');
         });
 
         document.querySelector(".login-back-button")?.addEventListener("click", () => {
-            registrationStep -= 1;
-            renderApp('login', 'register');
+            // Keep what was typed on this step (without validating it) before going back.
+            collectRegistrationData(loginForm).then((currentData) => {
+                registrationData = { ...registrationData, ...currentData };
+            }).catch(() => {}).finally(() => {
+                registrationStep -= 1;
+                renderApp('login', 'register');
+            });
         });
-
         loginForm?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const submittedForm = event.currentTarget;
@@ -209,6 +250,11 @@ function renderApp(activeView = 'user', authMode = 'login') {
 
             if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.reportValidity()) {
                 return;
+            }
+
+            const submitButton = submittedForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
             }
 
             try {
@@ -221,17 +267,16 @@ function renderApp(activeView = 'user', authMode = 'login') {
                     return;
                 }
 
-                const submittedData = isRegistering
-                    ? { ...registrationData, ...currentData }
-                    : currentData;
-                const request = isRegistering
-                    ? submitRegistration(submittedData)
-                    : login(
-                        String(submittedData.email ?? '').trim(),
-                        String(submittedData.password ?? '')
-                    );
+                if (isRegistering) {
+                    const result = await submitRegistration({ ...registrationData, ...currentData });
+                    goToLogin(result.message);
+                    return;
+                }
 
-                const user = await request;
+                const user = await login(
+                    String(currentData.email ?? '').trim(),
+                    String(currentData.password ?? '')
+                );
                 const homeView = getRoleHomeView(user.role);
 
                 if (!homeView) {
@@ -244,8 +289,17 @@ function renderApp(activeView = 'user', authMode = 'login') {
                     errorMessage.textContent = error.message;
                     errorMessage.hidden = false;
                 }
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
             }
         });
     }
 }
-renderApp('login');
+initAuth().then((user) => {
+    if (user) {
+        renderApp(getRoleHomeView(user.role) ?? 'login');
+    } else {
+        renderApp('login');
+    }
+});

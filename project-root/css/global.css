@@ -410,6 +410,18 @@ body {
     font-size: 13px;
 }
 
+.login-notice {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.login-file-kept {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
 .login-card button {
     background-color: var(--color-accent-dark);
     color: var(--color-background);

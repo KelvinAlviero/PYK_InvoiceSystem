@@ -1,58 +1,72 @@
-const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbyLlFoPNlIhEs2lSrBL9wtSGf2_CqNkZxDfMb9vmCsltu4PYrev2JHw2Xe7_NT2yaY9/exec';
-const AUTH_USER_STORAGE_KEY = 'auth-user';
+// Talks to the Express API (same origin, so the session cookie is sent automatically).
+// The server is the source of truth for who is logged in; currentUser is only a cache
+// for rendering. Editing it in dev tools does not grant access to any API.
+let currentUser = null;
 
-async function requestAuth(payload) {
-    const response = await fetch(AUTH_API_URL, {
-        method: 'POST',
-        headers: {
-            // text/plain avoids the browser's JSON CORS preflight for Apps Script.
-            'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify(payload)
-    });
+export async function apiRequest(path, { method = 'GET', body } = {}) {
+    const options = { method, credentials: 'same-origin', headers: {} };
 
-    let result;
+    if (body instanceof FormData) {
+        options.body = body; // browser sets the multipart boundary itself
+    } else if (body !== undefined) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+    }
+
+    let response;
+    try {
+        response = await fetch(`/api${path}`, options);
+    } catch {
+        throw new Error('Could not reach the server. Check your connection and try again.');
+    }
+
+    let result = null;
     try {
         result = await response.json();
     } catch {
-        throw new Error('The authentication service returned an invalid response.');
+        // fall through to the status check below
     }
 
-    if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Invalid email or password.');
+    if (!response.ok || result?.success === false) {
+        const error = new Error(result?.message || `Request failed (${response.status}).`);
+        error.status = response.status;
+        throw error;
     }
 
-    if (!result.user?.role) {
-        throw new Error('The authentication response is missing a user role.');
-    }
-
-    sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
-    return result.user;
+    return result;
 }
 
-export function login(email, password) {
-    return requestAuth({ action: 'login', email, password });
+// Call once on page load: restores the session if the cookie is still valid.
+export async function initAuth() {
+    try {
+        currentUser = (await apiRequest('/auth/me')).user;
+    } catch {
+        currentUser = null;
+    }
+    return currentUser;
 }
 
-export function registerAccount(email, password, role, registrationData) {
-    return requestAuth({ action: 'register', email, password, role, registrationData });
+export async function login(email, password) {
+    const result = await apiRequest('/auth/login', { method: 'POST', body: { email, password } });
+    currentUser = result.user;
+    return currentUser;
+}
+
+// formData: multipart FormData with the registration fields and PDF files.
+// Does not log in: the vendor must wait for approval.
+export function registerVendor(formData) {
+    return apiRequest('/auth/register', { method: 'POST', body: formData });
 }
 
 export function getCurrentUser() {
-    const storedUser = sessionStorage.getItem(AUTH_USER_STORAGE_KEY);
-
-    if (!storedUser) {
-        return null;
-    }
-
-    try {
-        return JSON.parse(storedUser);
-    } catch {
-        sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
-        return null;
-    }
+    return currentUser;
 }
 
-export function logout() {
-    sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
+export async function logout() {
+    currentUser = null;
+    try {
+        await apiRequest('/auth/logout', { method: 'POST' });
+    } catch {
+        // already logged out server-side; nothing else to do
+    }
 }

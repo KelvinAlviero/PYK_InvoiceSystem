@@ -12,17 +12,7 @@ export const registrationSteps = [
             </div>
             <div class="login-field">
                 <label for="register-password">Password</label>
-                <input id="register-password" name="password" type="password" autocomplete="new-password" required>
-            </div>
-            <div class="login-field">
-                <label for="register-role">Role</label>
-                <select id="register-role" name="role" required>
-                    <option value="" selected disabled>Choose a role</option>
-                    <option value="User">User</option>
-                    <option value="Verification">Verification</option>
-                    <option value="Treasury">Treasury</option>
-                    <option value="Admin">Admin</option>
-                </select>
+                <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
             </div>
             <div class="login-field">
                 <label for="terms-document">Terms of Payment document (PDF)</label>
@@ -43,7 +33,7 @@ export const registrationSteps = [
             </div>
             <div class="login-field">
                 <label for="submission-date">Tanggal Pengajuan</label>
-                <input id="submission-date" name="submissionDate" type="date" value="${getSubmissionDate()}" readonly required>
+                <input id="submission-date" type="date" value="${getSubmissionDate()}" readonly>
             </div>
             <div class="login-field">
                 <label for="vendor-name">Nama Vendor</label>
@@ -59,10 +49,8 @@ export const registrationSteps = [
             </div>
             <div class="login-field">
                 <label for="company-province">Provinsi</label>
-                <select id="company-province" name="province" required>
-                    <option value="" selected disabled>Choose a province</option>
-                    <option value="Jawa Barat">Jawa Barat</option>
-                    <option value="Jawa Tengah">Jawa Tengah</option>
+                <select id="company-province" name="province" required disabled>
+                    <option value="" selected disabled>Loading provinces...</option>
                 </select>
             </div>
             <div class="login-field">
