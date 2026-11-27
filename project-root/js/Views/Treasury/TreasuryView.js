@@ -1,75 +1,61 @@
-// Sample invoices for the scrollable Treasury list.
-// The invoice information stays the same as the original sample but only the amount changes for example purposes 
-const invoiceTemplate = {
-    documentNumber: 'DOC-2026-002',
-    vendor: 'RM Payakumbuh Ciater',
-    purchaseOrder: 'PO-2026-7715',
-    status: 'AP Verified',
-    bankName: 'BCA',
-    bankAccount: '83012938131',
-    accountName: 'PT Sumber Makmur Jaya'
-};
+import { apiRequest } from '../../authService.js';
+import { dateTime, escapeHtml, renderDocumentLinks, renderInvoiceCard, rupiah } from '../components/invoiceShared.js';
 
-const treasuryInvoices = [
-    { ...invoiceTemplate, id: 'invoice-1', amount: 'Rp 48.500.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-2', amount: 'Rp 32.750.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-3', amount: 'Rp 65.200.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-4', amount: 'Rp 17.850.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-5', amount: 'Rp 24.300.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-6', amount: 'Rp 91.000.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-7', amount: 'Rp 56.400.000', paymentConfirmed: false },
-    { ...invoiceTemplate, id: 'invoice-8', amount: 'Rp 12.600.000', paymentConfirmed: false }
+// Treasury: invoices AP marked SESUAI ("Siap Dibayar"), oldest first. Treasury fills
+// in the transfer details, attaches the proof, confirms, and the invoice becomes Lunas.
+
+// Values must match the API (PAYMENT_METHODS in server/routes/invoices.js).
+const PAYMENT_METHODS = [
+    ['RTGS/SKN', 'Bank Transfer (RTGS / SKN)'],
+    ['BI-FAST', 'Bank Transfer (BI-FAST)'],
+    ['Giro/Cek', 'Giro / Cek Perusahaan']
 ];
+const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 
-function renderInvoiceCard(invoice, index) {
-    return `
-        <button class="invoice-card" type="button" data-invoice-index="${index}" aria-pressed="false">
-            <span class="invoice-card-topline">
-                <span class="invoice-document-number">${invoice.documentNumber}</span>
-                <span class="invoice-card-status">${invoice.status}</span>
-            </span>
-            <span class="invoice-card-vendor">${invoice.vendor}</span>
-            <span class="invoice-card-bottomline">
-                <span>PO: ${invoice.purchaseOrder}</span>
-                <strong>${invoice.amount}</strong>
-            </span>
-        </button>
-    `;
-}
+let treasuryInvoices = [];
 
 function renderInvoiceDetails(invoice) {
     return `
         <div class="treasury-payment-content">
             <div class="treasury-invoice-summary">
                 <div class="treasury-summary-main">
-                    <p class="treasury-document-number">${invoice.documentNumber}</p>
+                    <p class="treasury-document-number">${escapeHtml(invoice.invoice_code)}</p>
                     <div class="treasury-vendor-route">
-                        <strong>${invoice.vendor}</strong>
+                        <strong>${escapeHtml(invoice.branch_name)}</strong>
                         <span aria-hidden="true">&#8594;</span>
-                        <strong>${invoice.vendor}</strong>
+                        <strong>${escapeHtml(invoice.vendor_name)}</strong>
                     </div>
-                    <p class="treasury-bank-detail">
-                        Bank: ${invoice.bankName} ${invoice.bankAccount} AN ${invoice.accountName}
-                    </p>
-                    <p class="treasury-po-detail">PO: ${invoice.purchaseOrder}</p>
+                    <p class="treasury-po-detail">PO: ${escapeHtml(invoice.po_number)} · Invoice: ${escapeHtml(invoice.invoice_number)}</p>
+                    <p class="treasury-po-detail">Disetujui AP: ${dateTime(invoice.ap_reviewed_at)}${invoice.ap_note ? ` · ${escapeHtml(invoice.ap_note)}` : ''}</p>
                 </div>
                 <div class="treasury-summary-amount">
                     <span>Jumlah Pembayaran</span>
-                    <strong>${invoice.amount}</strong>
+                    <strong>${rupiah(invoice.amount)}</strong>
                 </div>
             </div>
 
             <form class="transfer-form" id="transfer-form" novalidate>
                 <h2>FORM TRANSFER</h2>
+                ${renderDocumentLinks(invoice.documents)}
 
                 <div class="transfer-form-grid">
                     <label class="transfer-field">
+                        <span>Rekening Tujuan</span>
+                        <select id="paid-to-account" name="paidToAccount" required>
+                            ${invoice.bankAccounts.map((bank) => `
+                                <option value="${bank.account_index}">
+                                    ${escapeHtml(bank.bank_name)} ${escapeHtml(bank.account_number)} AN ${escapeHtml(bank.account_holder)}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </label>
+
+                    <label class="transfer-field">
                         <span>Metode Pembayaran</span>
                         <select id="payment-method" name="paymentMethod" required>
-                            <option value="Bank Transfer (RTGS / SKN)" selected>Bank Transfer (RTGS / SKN)</option>
-                            <option value="Bank Transfer (BI-FAST)">Bank Transfer (BI-FAST)</option>
-                            <option value="Virtual Account">Virtual Account</option>
-                            <option value="Other">Other</option>
+                            ${PAYMENT_METHODS.map(([value, label], index) => `
+                                <option value="${value}" ${index === 0 ? 'selected' : ''}>${label}</option>
+                            `).join('')}
                         </select>
                     </label>
 
@@ -81,14 +67,14 @@ function renderInvoiceDetails(invoice) {
                             type="text"
                             placeholder="Masukkan nomor referensi"
                             autocomplete="off"
-                            maxlength="80"
+                            maxlength="100"
                             required
                         >
                     </label>
 
                     <div class="transfer-proof-field">
                         <label class="transfer-field-label" for="proof-file">
-                            Lampiran Bukti Pembayaran (PDF/IMAGE)
+                            Lampiran Bukti Pembayaran (PDF)
                         </label>
                         <div class="proof-file-card">
                             <span class="proof-file-type" id="proof-file-type" aria-hidden="true">PDF</span>
@@ -100,21 +86,18 @@ function renderInvoiceDetails(invoice) {
                                 id="proof-file"
                                 name="paymentProof"
                                 type="file"
-                                accept="application/pdf,image/png,image/jpeg,image/webp"
+                                accept="application/pdf,.pdf"
                                 required
                             >
                         </div>
                         <div class="proof-preview" id="proof-preview" hidden></div>
-                        <p class="proof-help">Format yang didukung: PDF, PNG, JPG, WEBP. Maksimal 10 MB.</p>
+                        <p class="proof-help">Format yang didukung: PDF. Maksimal 5 MB.</p>
                     </div>
                 </div>
 
                 <p class="transfer-feedback" id="transfer-feedback" role="status" aria-live="polite"></p>
 
                 <div class="transfer-form-actions">
-                    <button class="transfer-reject-button" type="button">
-                        Tolak / Cancel
-                    </button>
                     <button class="transfer-submit-button" type="submit">
                         Bayar dan Kirim
                     </button>
@@ -143,11 +126,11 @@ export function TreasuryView() {
             <section class="invoice-list-panel" aria-labelledby="ready-invoices-title">
                 <header class="invoice-list-header">
                     <h1 id="ready-invoices-title">Siap Dibayar</h1>
-                    <span class="invoice-count">${treasuryInvoices.length} Tagihan</span>
+                    <span class="invoice-count">... Tagihan</span>
                 </header>
 
                 <div class="invoice-list" aria-label="Daftar tagihan siap dibayar">
-                    ${treasuryInvoices.map((invoice, index) => renderInvoiceCard(invoice, index)).join('')}
+                    <p class="invoice-list-empty">Loading...</p>
                 </div>
             </section>
 
@@ -160,36 +143,23 @@ export function TreasuryView() {
         </section>
     `;
 
-    function attachPaymentFormListeners(detailBody, invoice, invoiceCard) {
+    function attachPaymentFormListeners(detailBody, invoice, onPaid) {
         const form = detailBody.querySelector('#transfer-form');
         if (!form) return;
 
         const fileInput = form.querySelector('#proof-file');
         const fileName = form.querySelector('#proof-file-name');
-        const fileType = form.querySelector('#proof-file-type');
         const fileStatus = form.querySelector('#proof-file-status');
         const preview = form.querySelector('#proof-preview');
         const feedback = form.querySelector('#transfer-feedback');
         const submitButton = form.querySelector('.transfer-submit-button');
-        const rejectButton = form.querySelector('.transfer-reject-button');
         const modal = detailBody.querySelector('#payment-confirmation-modal');
         const acceptButton = modal.querySelector('.payment-confirmation-accept');
         const modalCancelButton = modal.querySelector('.payment-confirmation-cancel');
-        let previewUrl = null;
-        let paymentConfirmed = Boolean(invoice.paymentConfirmed);
 
         const closeConfirmation = () => {
             modal.hidden = true;
             submitButton.focus();
-        };
-
-        const resetConfirmationState = () => {
-            if (paymentConfirmed) {
-                paymentConfirmed = false;
-                invoice.paymentConfirmed = false;
-                submitButton.disabled = false;
-                submitButton.textContent = 'Bayar dan Kirim';
-            }
         };
 
         const showFeedback = (message, type = 'is-info') => {
@@ -197,46 +167,25 @@ export function TreasuryView() {
             feedback.className = `transfer-feedback ${type}`;
         };
 
-        // Each duplicated ticket keeps its own confirmed/rejected state.
-        if (invoice.status === 'Ditolak / Cancel') {
-            form.querySelectorAll('input, select').forEach((field) => {
-                field.disabled = true;
-            });
-            submitButton.disabled = true;
-            rejectButton.disabled = true;
-            rejectButton.textContent = 'Tagihan Dibatalkan';
-            showFeedback(
-                'Tagihan ini sudah ditolak/dibatalkan. Pilih tagihan lain untuk melanjutkan pembayaran.',
-                'is-danger'
-            );
-            return;
-        }
+        const clearFeedback = () => {
+            feedback.textContent = '';
+            feedback.className = 'transfer-feedback';
+        };
 
-        if (paymentConfirmed) {
+        if (!invoice.bankAccounts.length) {
             submitButton.disabled = true;
-            submitButton.textContent = 'Konfirmasi Diterima';
-            showFeedback(
-                'Konfirmasi pembayaran untuk tagihan ini sudah diterima pada tampilan ini.',
-                'is-info'
-            );
+            showFeedback('Vendor ini belum memiliki data rekening. Pembayaran tidak bisa diproses.', 'is-danger');
+            return;
         }
 
         fileInput.addEventListener('change', () => {
             const file = fileInput.files?.[0];
-            resetConfirmationState();
-            feedback.textContent = '';
-            feedback.className = 'transfer-feedback';
-
-            if (previewUrl) {
-                URL.revokeObjectURL(previewUrl);
-                previewUrl = null;
-            }
+            clearFeedback();
             preview.replaceChildren();
             preview.hidden = true;
 
             if (!file) {
                 fileName.textContent = 'Belum ada file dipilih';
-                fileType.textContent = 'PDF';
                 fileStatus.textContent = 'Required';
                 fileStatus.classList.remove('is-ready');
                 fileInput.setCustomValidity('Lampirkan bukti pembayaran terlebih dahulu.');
@@ -244,10 +193,9 @@ export function TreasuryView() {
             }
 
             const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-            const isImage = file.type.startsWith('image/') && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type);
-            if (!isPdf && !isImage) {
+            if (!isPdf) {
                 fileInput.value = '';
-                fileInput.setCustomValidity('Gunakan file PDF, PNG, JPG, atau WEBP.');
+                fileInput.setCustomValidity('Gunakan file PDF.');
                 fileInput.reportValidity();
                 fileName.textContent = 'Format file tidak didukung';
                 fileStatus.textContent = 'Invalid';
@@ -255,11 +203,11 @@ export function TreasuryView() {
                 return;
             }
 
-            if (file.size > 10 * 1024 * 1024) {
+            if (file.size > MAX_PROOF_BYTES) {
                 fileInput.value = '';
-                fileInput.setCustomValidity('Ukuran file maksimal 10 MB.');
+                fileInput.setCustomValidity('Ukuran file maksimal 5 MB.');
                 fileInput.reportValidity();
-                fileName.textContent = 'File melebihi 10 MB';
+                fileName.textContent = 'File melebihi 5 MB';
                 fileStatus.textContent = 'Too large';
                 fileStatus.classList.remove('is-ready');
                 return;
@@ -267,35 +215,17 @@ export function TreasuryView() {
 
             fileInput.setCustomValidity('');
             fileName.textContent = file.name;
-            fileType.textContent = isPdf ? 'PDF' : file.type === 'image/png' ? 'PNG' : file.type === 'image/webp' ? 'WEBP' : 'JPG';
             fileStatus.textContent = 'Ready';
             fileStatus.classList.add('is-ready');
 
-            previewUrl = URL.createObjectURL(file);
-            if (isImage) {
-                const image = document.createElement('img');
-                image.src = previewUrl;
-                image.alt = 'Preview bukti pembayaran';
-                preview.append(image);
-            } else {
-                const pdfMessage = document.createElement('span');
-                pdfMessage.textContent = `PDF siap dilampirkan: ${file.name}`;
-                preview.append(pdfMessage);
-            }
+            const pdfMessage = document.createElement('span');
+            pdfMessage.textContent = `PDF siap dilampirkan: ${file.name}`;
+            preview.append(pdfMessage);
             preview.hidden = false;
         });
 
         form.querySelectorAll('input, select').forEach((field) => {
-            field.addEventListener('input', () => {
-                resetConfirmationState();
-                feedback.textContent = '';
-                feedback.className = 'transfer-feedback';
-            });
-            field.addEventListener('change', () => {
-                resetConfirmationState();
-                feedback.textContent = '';
-                feedback.className = 'transfer-feedback';
-            });
+            field.addEventListener('input', clearFeedback);
         });
 
         form.addEventListener('submit', (event) => {
@@ -309,17 +239,25 @@ export function TreasuryView() {
             modalCancelButton.focus();
         });
 
-        acceptButton.addEventListener('click', () => {
+        acceptButton.addEventListener('click', async () => {
             modal.hidden = true;
-            paymentConfirmed = true;
-            invoice.paymentConfirmed = true;
-            showFeedback(
-                'Konfirmasi diterima. Data pembayaran sudah lengkap dan siap diproses. Pemrosesan pembayaran serta pengiriman email tetap memerlukan sambungan backend.',
-                'is-info'
-            );
-            submitButton.textContent = 'Konfirmasi Diterima';
             submitButton.disabled = true;
-            rejectButton.focus();
+            submitButton.textContent = 'Memproses...';
+
+            const body = new FormData();
+            body.append('paymentMethod', form.elements.paymentMethod.value);
+            body.append('paymentReference', form.elements.bankReference.value.trim());
+            body.append('paidToAccount', form.elements.paidToAccount.value);
+            body.append('paymentProof', fileInput.files[0], fileInput.files[0].name);
+
+            try {
+                await apiRequest(`/invoices/${encodeURIComponent(invoice.id)}/pay`, { method: 'POST', body });
+                onPaid(`${invoice.invoice_code} sudah dibayar. Vendor menerima notifikasi pembayaran dan bukti transfer.`);
+            } catch (error) {
+                showFeedback(error.message, 'is-danger');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Bayar dan Kirim';
+            }
         });
 
         modalCancelButton.addEventListener('click', closeConfirmation);
@@ -333,51 +271,57 @@ export function TreasuryView() {
                 closeConfirmation();
             }
         });
-
-        // Reject/cancel is an immediate front-end action, as requested.
-        rejectButton.addEventListener('click', () => {
-            const cardStatus = invoiceCard.querySelector('.invoice-card-status');
-            if (cardStatus) cardStatus.textContent = 'Ditolak / Cancel';
-
-            invoice.status = 'Ditolak / Cancel';
-            showFeedback(
-                'Tagihan ditolak/dibatalkan pada tampilan ini. Status belum tersimpan ke database karena backend belum terhubung.',
-                'is-danger'
-            );
-
-            form.querySelectorAll('input, select').forEach((field) => {
-                field.disabled = true;
-            });
-            submitButton.disabled = true;
-            rejectButton.disabled = true;
-            rejectButton.textContent = 'Tagihan Dibatalkan';
-        });
     }
 
-    function attachListeners() {
-        const invoiceCards = document.querySelectorAll('.invoice-card[data-invoice-index]');
+    async function loadInvoices(message = '') {
+        const list = document.querySelector('.invoice-list');
+        const count = document.querySelector('.invoice-count');
         const detailBody = document.querySelector('.invoice-detail-body');
+        if (!list || !count || !detailBody) return;
 
-        if (!invoiceCards.length || !detailBody) return;
+        detailBody.classList.remove('has-payment-form');
+        detailBody.innerHTML = `<p class="empty-detail-message">${escapeHtml(message || 'Pilih tagihan di treasury')}</p>`;
 
+        try {
+            treasuryInvoices = (await apiRequest('/invoices?status=approved'))
+                .sort((a, b) => new Date(a.ap_reviewed_at) - new Date(b.ap_reviewed_at)); // oldest approval first
+        } catch (error) {
+            list.innerHTML = `<p class="invoice-list-empty">Gagal memuat: ${escapeHtml(error.message)}</p>`;
+            return;
+        }
+
+        count.textContent = `${treasuryInvoices.length} Tagihan`;
+        list.innerHTML = treasuryInvoices.length
+            ? treasuryInvoices.map((invoice, index) => renderInvoiceCard(invoice, index, 'AP Verified')).join('')
+            : '<p class="invoice-list-empty">Tidak ada tagihan yang siap dibayar.</p>';
+
+        const invoiceCards = list.querySelectorAll('.invoice-card[data-invoice-index]');
         invoiceCards.forEach((invoiceCard) => {
-            invoiceCard.addEventListener('click', () => {
-                const invoiceIndex = Number(invoiceCard.dataset.invoiceIndex);
-                const selectedInvoice = treasuryInvoices[invoiceIndex];
-                if (!selectedInvoice) return;
+            invoiceCard.addEventListener('click', async () => {
+                const selected = treasuryInvoices[Number(invoiceCard.dataset.invoiceIndex)];
+                if (!selected) return;
 
                 invoiceCards.forEach((card) => {
                     card.classList.remove('is-selected');
                     card.setAttribute('aria-pressed', 'false');
                 });
-
                 invoiceCard.classList.add('is-selected');
                 invoiceCard.setAttribute('aria-pressed', 'true');
-                detailBody.classList.add('has-payment-form');
-                detailBody.innerHTML = renderInvoiceDetails(selectedInvoice);
-                attachPaymentFormListeners(detailBody, selectedInvoice, invoiceCard);
+
+                try {
+                    const invoice = await apiRequest(`/invoices/${encodeURIComponent(selected.id)}`);
+                    detailBody.classList.add('has-payment-form');
+                    detailBody.innerHTML = renderInvoiceDetails(invoice);
+                    attachPaymentFormListeners(detailBody, invoice, loadInvoices);
+                } catch (error) {
+                    detailBody.innerHTML = `<p class="empty-detail-message">${escapeHtml(error.message)}</p>`;
+                }
             });
         });
+    }
+
+    function attachListeners() {
+        loadInvoices();
     }
 
     return { html, attachListeners };

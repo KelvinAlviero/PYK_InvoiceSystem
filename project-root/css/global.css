@@ -717,3 +717,29 @@ body.invoice-modal-open .invoice-modal {
     cursor: wait;
     opacity: 0.7;
 }
+
+/* Vendor invoice modal: AP review note and submit errors */
+.invoice-form-review,
+.invoice-form-message {
+    margin: 0 0 12px;
+    color: var(--color-accent-dark);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.invoice-form-message {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background-color: var(--color-accent);
+    color: #fff;
+}
+
+.invoice-form-message[hidden],
+.invoice-form-review[hidden] {
+    display: none;
+}
+
+.invoice-form .file-name[href] {
+    color: inherit;
+}

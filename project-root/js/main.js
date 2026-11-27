@@ -1,6 +1,6 @@
 import { TopBarComponent } from './Views/components/TopBar.js';
 import { SidebarComponent } from './Views/components/SideBar.js?v=2';
-import { addInvoice, attachInvoiceModalListeners, updateInvoice, UserView } from './Views/User/UserView.js?v=7';
+import { attachInvoiceModalListeners, UserView } from './Views/User/UserView.js?v=8';
 import { UserProfileView } from './Views/User/UserProfileView.js?v=2';
 import { LoginView } from './Views/Login/LoginView.js';
 import { RegistrationView } from './Views/Registration/RegistrationView.js';
@@ -267,14 +267,7 @@ function renderApp(activeView = 'user', authMode = 'login') {
         attachLocationListeners();
     }
     if (activeView === 'user') {
-        attachInvoiceModalListeners((invoice, isResubmission) => {
-            if (isResubmission) {
-                updateInvoice(invoice);
-            } else {
-                addInvoice(invoice);
-            }
-            renderApp('user');
-        });
+        attachInvoiceModalListeners();
     }
 
     if (activeView === 'profile') {
