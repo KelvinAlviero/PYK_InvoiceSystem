@@ -5,6 +5,8 @@ import { pool } from './db.js';
 import { HttpError, loadUser } from './lib/auth.js';
 import { deleteExpiredSessions } from './lib/sessions.js';
 import { authRouter } from './routes/auth.js';
+import { invoicesRouter } from './routes/invoices.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { regionsRouter } from './routes/regions.js';
 import { usersRouter } from './routes/users.js';
 import { vendorsRouter } from './routes/vendors.js';
@@ -30,6 +32,8 @@ api.use('/auth', authRouter);
 api.use('/regions', regionsRouter);
 api.use('/vendors', vendorsRouter);
 api.use('/users', usersRouter);
+api.use('/invoices', invoicesRouter);
+api.use('/notifications', notificationsRouter);
 
 api.use((_req, _res, next) => next(new HttpError(404, 'Not found.')));
 

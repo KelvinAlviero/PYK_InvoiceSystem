@@ -8,6 +8,7 @@ import { collectRegistrationData } from './Views/Registration/registrationState.
 import { submitRegistration } from './Views/Registration/registrationService.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
+import { AdminView } from './Views/Admin/AdminView.js';
 import { apiRequest, changePassword, getCurrentUser, initAuth, login, logout } from './authService.js';
 const appContainer = document.getElementById('app');
 let registrationStep = 1;
@@ -20,14 +21,14 @@ const roleHomeViews = {
     vendor: 'user',
     verification: 'ap-verification',
     treasury: 'treasury',
-    admin: 'ap-verification'
+    admin: 'admin'
 };
 
 const roleAllowedViews = {
     vendor: ['user', 'profile'],
     verification: ['ap-verification', 'profile'],
     treasury: ['treasury', 'profile'],
-    admin: ['user', 'ap-verification', 'treasury', 'profile']
+    admin: ['admin', 'user', 'ap-verification', 'treasury', 'profile']
 };
 
 function getRoleHomeView(role) {
@@ -223,6 +224,7 @@ function renderApp(activeView = 'user', authMode = 'login') {
     let currentView = '';
     let treasuryView = null;
     let verificationView = null;
+    let adminView = null;
 
     if (isLoginView) {
         currentView = authMode === 'register'
@@ -235,6 +237,9 @@ function renderApp(activeView = 'user', authMode = 'login') {
         } else if (activeView === 'treasury') {
             treasuryView = TreasuryView();
             currentView = treasuryView.html;
+        } else if (activeView === 'admin') {
+            adminView = AdminView();
+            currentView = adminView.html;
         } else if (activeView === 'ap-verification') {
             verificationView = VerificationView();
             currentView = verificationView.html;
@@ -254,6 +259,7 @@ function renderApp(activeView = 'user', authMode = 'login') {
     sidebar?.attachListeners();
     treasuryView?.attachListeners();
     verificationView?.attachListeners();
+    adminView?.attachListeners();
     if (isLoginView && authMode === 'register') {
         restoreRegistrationFields();
     }

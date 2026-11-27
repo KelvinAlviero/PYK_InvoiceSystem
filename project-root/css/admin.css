@@ -1,0 +1,493 @@
+/* Admin dashboard. Uses the same tokens and look as the Treasury / AP pages:
+   red panels, dark-red headers, white text, PYK-white cards. */
+
+.admin-page {
+    display: grid;
+    width: min(100%, 1240px);
+    grid-row: 1 / -1;
+    align-content: start;
+    gap: 18px;
+    padding-bottom: 32px;
+}
+
+.admin-body {
+    display: grid;
+    min-width: 0;
+    gap: 18px;
+}
+
+.admin-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    padding: 18px 24px;
+    border-radius: var(--box-radius);
+    background-color: var(--color-accent);
+    color: #fff;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.admin-header p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+.admin-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-tab,
+.admin-chip,
+.admin-button {
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 8px;
+    background-color: var(--color-background);
+    color: var(--color-accent-dark);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-tab[aria-selected="true"],
+.admin-chip[aria-pressed="true"] {
+    background-color: var(--color-accent-dark);
+    color: #fff;
+    box-shadow: inset 0 0 0 2px #fff;
+}
+
+.admin-tab:focus-visible,
+.admin-chip:focus-visible,
+.admin-button:focus-visible,
+.admin-row:focus-visible,
+.admin-stage:focus-visible {
+    outline: 3px solid var(--color-accent-dark);
+    outline-offset: 2px;
+}
+
+.admin-button-danger {
+    background-color: var(--color-accent-dark);
+    color: #fff;
+}
+
+.admin-button-success {
+    background-color: var(--color-success);
+    color: #fff;
+}
+
+.admin-button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+/* Stage cards: Submitted -> AP -> Treasury -> Paid */
+.admin-stages {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-stage {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 0;
+    border-radius: var(--box-radius);
+    background-color: var(--color-accent);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.admin-stage[aria-pressed="true"] {
+    background-color: var(--color-accent-dark);
+    box-shadow: inset 0 0 0 2px #fff;
+}
+
+.admin-stage-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.admin-stage-count {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.admin-stage-total {
+    font-size: 12px;
+}
+
+/* Two-column work area: list on the left, detail on the right */
+.admin-split {
+    display: grid;
+    grid-template-columns: minmax(0, 0.45fr) minmax(0, 0.55fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.admin-panel {
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--box-radius);
+    background-color: var(--color-accent);
+    color: #fff;
+}
+
+.admin-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 16px;
+    background-color: var(--color-accent-dark);
+}
+
+.admin-panel-header h2 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.admin-panel-body {
+    padding: 14px 16px;
+}
+
+.admin-list {
+    display: grid;
+    max-height: 560px;
+    overflow-y: auto;
+    padding: 10px;
+    gap: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #f2a1b0 rgb(255 255 255 / 14%);
+}
+
+.admin-row {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background-color: var(--color-accent-dark);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+}
+
+.admin-row[aria-current="true"] {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 40%);
+}
+
+.admin-row-top,
+.admin-row-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.admin-row-title {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-muted {
+    opacity: 0.8;
+}
+
+.admin-empty {
+    padding: 32px 16px;
+    text-align: center;
+    opacity: 0.85;
+}
+
+/* Status pills */
+.admin-status {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background-color: var(--color-background);
+    color: var(--color-accent-dark);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.admin-status[data-status="paid"],
+.admin-status[data-status="approved-vendor"],
+.admin-status[data-status="active"] {
+    background-color: var(--color-success);
+    color: #fff;
+}
+
+.admin-status[data-status="rejected"],
+.admin-status[data-status="inactive"] {
+    background-color: #4d0613;
+    color: #fff;
+}
+
+/* Detail panel content */
+.admin-detail-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgb(255 255 255 / 35%);
+}
+
+.admin-eyebrow {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    opacity: 0.85;
+}
+
+.admin-detail-heading h3 {
+    margin: 2px 0 0;
+    font-size: 18px;
+}
+
+.admin-amount {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.admin-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 14px 0 0;
+    gap: 10px 16px;
+}
+
+.admin-fields div {
+    min-width: 0;
+}
+
+.admin-fields dt {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.admin-fields dd {
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-section-title {
+    margin: 18px 0 8px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.admin-docs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.admin-doc {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background-color: var(--color-accent-dark);
+    color: #fff;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.admin-doc:hover {
+    box-shadow: inset 0 0 0 1px #fff;
+}
+
+.admin-doc[aria-disabled="true"] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.admin-doc strong {
+    display: block;
+}
+
+.admin-timeline {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    gap: 8px;
+    list-style: none;
+}
+
+.admin-timeline li {
+    padding: 8px 10px;
+    border-left: 3px solid var(--color-background);
+    background-color: rgb(0 0 0 / 12%);
+    font-size: 12px;
+}
+
+.admin-timeline li[data-action="rejected"] {
+    border-left-color: #4d0613;
+}
+
+.admin-timeline li[data-action="paid"],
+.admin-timeline li[data-action="approved"] {
+    border-left-color: var(--color-success);
+}
+
+.admin-note {
+    margin: 4px 0 0;
+    white-space: pre-wrap;
+}
+
+/* Forms */
+.admin-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    align-items: end;
+    gap: 10px;
+}
+
+.admin-field {
+    display: grid;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-field input,
+.admin-field select,
+.admin-field textarea {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 6px;
+    background-color: var(--color-background);
+    color: var(--color-accent-dark);
+    font: inherit;
+    font-weight: 400;
+}
+
+.admin-field textarea {
+    min-height: 64px;
+    resize: vertical;
+}
+
+.admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.admin-message {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-message[data-kind="error"] {
+    color: #ffd9df;
+}
+
+/* Users table */
+.admin-table-wrap {
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgb(255 255 255 / 25%);
+}
+
+.admin-table th {
+    background-color: var(--color-accent-dark);
+    font-size: 12px;
+}
+
+/* Notification log */
+.admin-mail {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background-color: var(--color-accent-dark);
+    font-size: 12px;
+}
+
+.admin-mail summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 12px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.admin-mail summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-mail p {
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+    .admin-stages {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-split {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .admin-header {
+        padding: 14px 16px;
+    }
+
+    .admin-fields,
+    .admin-docs {
+        grid-template-columns: 1fr;
+    }
+}
