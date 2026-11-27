@@ -1,4 +1,5 @@
 // Small helpers shared by the AP Verification and Treasury pages.
+import { getLocale, t } from '../../i18n.js';
 
 export function escapeHtml(value) {
     return String(value ?? '')
@@ -15,31 +16,27 @@ export function rupiah(value) {
 
 export function dateTime(value) {
     return value
-        ? new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+        ? new Date(value).toLocaleString(getLocale(), { dateStyle: 'medium', timeStyle: 'short' })
         : '-';
 }
 
-const DOCUMENT_LABELS = [
-    ['purchase_order', 'Purchase Order (PO)'],
-    ['goods_receipt', 'Goods Receipt (GR)'],
-    ['supplier_invoice', 'Invoice Supplier'],
-    ['delivery_note', 'Surat Jalan'],
-    ['tax_invoice', 'Faktur Pajak'],
-    ['notes', 'Notes'],
-    ['payment_proof', 'Bukti Transfer']
+const DOCUMENT_TYPES = [
+    'purchase_order', 'goods_receipt', 'supplier_invoice', 'delivery_note',
+    'tax_invoice', 'notes', 'payment_proof'
 ];
 
 // One link per uploaded PDF (opens in a new tab). Missing optional files are skipped.
 export function renderDocumentLinks(documents) {
     const byType = new Map(documents.map((doc) => [doc.document_type, doc]));
-    const links = DOCUMENT_LABELS
-        .filter(([type]) => byType.has(type))
-        .map(([type, label]) => {
+    const links = DOCUMENT_TYPES
+        .filter((type) => byType.has(type))
+        .map((type) => {
+            const label = t(`doc.${type}`);
             const doc = byType.get(type);
             return `
                 <a class="invoice-doc-link" href="${escapeHtml(doc.url)}" target="_blank" rel="noopener">
                     <span><strong>${escapeHtml(label)}</strong>${escapeHtml(doc.original_name)}</span>
-                    <span aria-hidden="true">Buka ↗</span>
+                    <span aria-hidden="true">${t('common.open')} ↗</span>
                 </a>
             `;
         });

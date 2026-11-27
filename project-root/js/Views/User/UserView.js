@@ -1,15 +1,13 @@
 import { apiRequest } from '../../authService.js';
+import { t } from '../../i18n.js';
 
 // Vendor dashboard: the vendor's own invoices, loaded from the API.
 // "Add new invoice" submits a new one; a rejected ("Tidak Sesuai") invoice can be
 // opened, fixed and resubmitted; everything else opens read-only.
 
-const STATUS_LABELS = {
-    submitted: 'Menunggu Verifikasi',
-    rejected: 'Tidak Sesuai',
-    approved: 'Sesuai',
-    paid: 'Lunas'
-};
+function statusLabel(status) {
+    return t(`status.${status}`);
+}
 
 // form field name -> API field name / document type
 const TEXT_FIELDS = {
@@ -20,12 +18,12 @@ const TEXT_FIELDS = {
     'vendor-note': 'vendorNote'
 };
 const FILE_FIELDS = [
-    { name: 'purchase-order', apiField: 'purchaseOrder', type: 'purchase_order', label: 'PDF Purchase order', required: true },
-    { name: 'good-receipt', apiField: 'goodsReceipt', type: 'goods_receipt', label: 'PDF Good receipt', required: true },
-    { name: 'supplier-invoice', apiField: 'supplierInvoice', type: 'supplier_invoice', label: 'PDF Invoice supplier', required: true },
-    { name: 'travel-note', apiField: 'deliveryNote', type: 'delivery_note', label: 'PDF Travel note (Surat Jalan)', required: true },
-    { name: 'tax-invoice', apiField: 'taxInvoice', type: 'tax_invoice', label: 'PDF Faktur Pajak', required: true },
-    { name: 'notes', apiField: 'notesDocument', type: 'notes', label: 'PDF Notes (optional)', required: false }
+    { name: 'purchase-order', apiField: 'purchaseOrder', type: 'purchase_order', required: true },
+    { name: 'good-receipt', apiField: 'goodsReceipt', type: 'goods_receipt', required: true },
+    { name: 'supplier-invoice', apiField: 'supplierInvoice', type: 'supplier_invoice', required: true },
+    { name: 'travel-note', apiField: 'deliveryNote', type: 'delivery_note', required: true },
+    { name: 'tax-invoice', apiField: 'taxInvoice', type: 'tax_invoice', required: true },
+    { name: 'notes', apiField: 'notesDocument', type: 'notes', required: false }
 ];
 
 let invoices = [];
@@ -45,7 +43,7 @@ function rupiah(value) {
 
 function renderRows() {
     if (!invoices.length) {
-        return '<tr><td colspan="7">Belum ada tagihan. Klik "Add new invoice" untuk mengajukan tagihan pertama.</td></tr>';
+        return `<tr><td colspan="7">${escapeHtml(t('vendor.empty'))}</td></tr>`;
     }
     return invoices.map((invoice, index) => `
         <tr>
@@ -53,10 +51,10 @@ function renderRows() {
             <td>${escapeHtml(invoice.branch_name)}</td>
             <td>${escapeHtml(invoice.po_number)}<br><small>${escapeHtml(invoice.invoice_number)}</small></td>
             <td>${rupiah(invoice.amount)}</td>
-            <td><span class="table-status">${escapeHtml(STATUS_LABELS[invoice.status] ?? invoice.status)}</span></td>
-            <td>${escapeHtml(invoice.status === 'rejected' ? invoice.ap_note : (invoice.revision > 1 ? `Revisi ke-${invoice.revision}` : '-'))}</td>
+            <td><span class="table-status">${escapeHtml(statusLabel(invoice.status))}</span></td>
+            <td>${escapeHtml(invoice.status === 'rejected' ? invoice.ap_note : (invoice.revision > 1 ? t('common.revision', { n: invoice.revision }) : '-'))}</td>
             <td><button class="table-action" type="button" data-invoice-index="${index}">
-                ${invoice.status === 'rejected' ? 'Revisi' : 'View'}
+                ${invoice.status === 'rejected' ? t('vendor.revise') : t('vendor.view')}
             </button></td>
         </tr>
     `).join('');
@@ -65,29 +63,29 @@ function renderRows() {
 // Display for the vendor dashboard
 export function UserView() {
     return `
-        <section class="box top-box" aria-label="Invoice actions">
+        <section class="box top-box" >
             <button class="invoice-button" type="button" aria-controls="invoice-modal" aria-expanded="false">
                 <span class="invoice-button-mark" aria-hidden="true">+</span>
-                <span>Add new invoice</span>
+                <span>${t('vendor.add')}</span>
             </button>
         </section>
-        <section class="box center-box" aria-label="Invoices">
+        <section class="box center-box" aria-label="${t('vendor.tableCaption')}">
             <div class="invoice-table-wrapper">
                 <table class="invoice-table">
-                    <caption class="visually-hidden">Invoice list</caption>
+                    <caption class="visually-hidden">${t('vendor.tableCaption')}</caption>
                     <thead>
                         <tr>
-                            <th scope="col">ID</th>
-                            <th scope="col">Branch name</th>
-                            <th scope="col">No. PO &amp; Invoice</th>
-                            <th scope="col">Total</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">Notes</th>
-                            <th scope="col">Action</th>
+                            <th scope="col">${t('vendor.col.id')}</th>
+                            <th scope="col">${t('vendor.col.branch')}</th>
+                            <th scope="col">${escapeHtml(t('vendor.col.po'))}</th>
+                            <th scope="col">${t('vendor.col.total')}</th>
+                            <th scope="col">${t('vendor.col.status')}</th>
+                            <th scope="col">${t('vendor.col.notes')}</th>
+                            <th scope="col">${t('vendor.col.action')}</th>
                         </tr>
                     </thead>
                     <tbody class="invoice-table-body">
-                        <tr><td colspan="7">Loading...</td></tr>
+                        <tr><td colspan="7">${t('common.loading')}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -95,40 +93,40 @@ export function UserView() {
         <div class="invoice-modal-backdrop" aria-hidden="true"></div>
         <section class="invoice-modal" id="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title" aria-hidden="true" inert>
             <header class="invoice-modal-header">
-                <h2 id="invoice-modal-title">Add new invoice</h2>
-                <button class="invoice-modal-close" type="button" aria-label="Close invoice form">X</button>
+                <h2 id="invoice-modal-title">${t('vendor.modal.add')}</h2>
+                <button class="invoice-modal-close" type="button" aria-label="${t('vendor.modal.close')}">X</button>
             </header>
             <form class="invoice-form">
                 <p class="invoice-form-review" hidden></p>
                 <div class="invoice-form-body">
                     <fieldset class="invoice-details">
-                        <legend>Invoice details</legend>
+                        <legend>${t('vendor.details')}</legend>
                         <label>
-                            Branch name (Nama Cabang)
+                            ${t('vendor.branch')}
                             <input type="text" name="branch-name" maxlength="200" required>
                         </label>
                         <label>
-                            Price (Rp)
+                            ${t('vendor.price')}
                             <input type="number" name="price" min="1" step="0.01" required>
                         </label>
                         <label>
-                            PO number
+                            ${t('vendor.po')}
                             <input type="text" name="po-number" maxlength="200" required>
                         </label>
                         <label>
-                            Supplier invoice number
+                            ${t('vendor.invoiceNumber')}
                             <input type="text" name="invoice-number" maxlength="200" required>
                         </label>
                         <label>
-                            Note (optional)
+                            ${t('vendor.note')}
                             <input type="text" name="vendor-note" maxlength="1000">
                         </label>
                     </fieldset>
                     <fieldset class="invoice-documents">
-                        <legend>Documents</legend>
+                        <legend>${t('vendor.documents')}</legend>
                         ${FILE_FIELDS.map((file) => `
                             <label class="file-field">
-                                ${escapeHtml(file.label)}
+                                ${escapeHtml(t(`vendor.file.${file.name}`))}
                                 <input type="file" name="${file.name}" accept=".pdf,application/pdf" ${file.required ? 'required' : ''}>
                             </label>
                         `).join('')}
@@ -136,8 +134,8 @@ export function UserView() {
                 </div>
                 <p class="invoice-form-message" role="alert" hidden></p>
                 <div class="invoice-form-actions">
-                    <button class="invoice-cancel" type="button">Cancel</button>
-                    <button class="invoice-submit" type="submit">Submit</button>
+                    <button class="invoice-cancel" type="button">${t('common.cancel')}</button>
+                    <button class="invoice-submit" type="submit">${t('vendor.submit')}</button>
                 </div>
             </form>
         </section>
@@ -175,7 +173,7 @@ export function attachInvoiceModalListeners() {
             invoices = await apiRequest('/invoices');
             tableBody.innerHTML = renderRows();
         } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="7">Could not load invoices: ${escapeHtml(error.message)}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="7">${escapeHtml(t('common.loadFailed', { error: error.message }))}</td></tr>`;
         }
     }
 
@@ -190,7 +188,7 @@ export function attachInvoiceModalListeners() {
             if (invoiceDetail) {
                 const fileName = document.createElement(doc ? 'a' : 'span');
                 fileName.className = 'file-name';
-                fileName.textContent = doc ? doc.original_name : 'No file provided';
+                fileName.textContent = doc ? doc.original_name : t('vendor.noFile');
                 if (doc) {
                     fileName.href = doc.url;
                     fileName.target = '_blank';
@@ -207,11 +205,11 @@ export function attachInvoiceModalListeners() {
         const isReadOnly = !isAddMode && !isRevisionMode;
 
         modalTitle.textContent = isAddMode
-            ? 'Add new invoice'
-            : isRevisionMode ? 'Revise and resubmit invoice' : 'View invoice';
+            ? t('vendor.modal.add')
+            : isRevisionMode ? t('vendor.modal.revise') : t('vendor.modal.view');
         submitButton.hidden = isReadOnly;
-        submitButton.textContent = isRevisionMode ? 'Resubmit' : 'Submit';
-        cancelButton.textContent = isReadOnly ? 'Close' : 'Cancel';
+        submitButton.textContent = isRevisionMode ? t('vendor.resubmit') : t('vendor.submit');
+        cancelButton.textContent = isReadOnly ? t('common.close') : t('common.cancel');
 
         invoiceForm.querySelectorAll('input').forEach((input) => {
             input.disabled = isReadOnly;
@@ -273,12 +271,12 @@ export function attachInvoiceModalListeners() {
         invoiceForm.elements['vendor-note'].value = detail.vendor_note ?? '';
         showExistingFiles(detail);
 
-        const reviewLines = [`Status: ${STATUS_LABELS[detail.status] ?? detail.status}`];
+        const reviewLines = [t('vendor.statusLine', { status: statusLabel(detail.status) })];
         if (detail.ap_note) {
-            reviewLines.push(`Catatan AP: ${detail.ap_note}`);
+            reviewLines.push(t('vendor.apNote', { note: detail.ap_note }));
         }
         if (detail.status === 'paid') {
-            reviewLines.push(`Dibayar via ${detail.payment_method}, ref ${detail.payment_reference}`);
+            reviewLines.push(t('vendor.paidVia', { method: detail.payment_method, reference: detail.payment_reference }));
         }
         reviewNote.textContent = reviewLines.join(' · ');
         reviewNote.hidden = false;
@@ -306,11 +304,11 @@ export function attachInvoiceModalListeners() {
                 continue;
             }
             if (!chosen.type.includes('pdf') && !chosen.name.toLowerCase().endsWith('.pdf')) {
-                showMessage(`${chosen.name} is not a PDF file.`);
+                showMessage(t('common.notPdf', { name: chosen.name }));
                 return;
             }
             if (chosen.size > 5 * 1024 * 1024) {
-                showMessage(`${chosen.name} is larger than 5 MB.`);
+                showMessage(t('common.fileTooLarge', { name: chosen.name }));
                 return;
             }
             body.append(file.apiField, chosen, chosen.name);

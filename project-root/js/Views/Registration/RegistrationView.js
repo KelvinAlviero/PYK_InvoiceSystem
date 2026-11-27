@@ -1,3 +1,4 @@
+import { t } from '../../i18n.js';
 import { registrationSteps } from './registrationSteps.js';
 
 export function RegistrationView(registerStep = 1, registrationData = {}) {
@@ -7,21 +8,21 @@ export function RegistrationView(registerStep = 1, registrationData = {}) {
         : currentStep.fields;
 
     return `
-        <section class="login-page" aria-label="Create account">
+        <section class="login-page" aria-label="${t('register.ariaLabel')}">
             <form class="login-card" data-auth-mode="register" data-register-step="${registerStep}">
                 <div class="login-card-fields">
-                    <h1>${currentStep.title}</h1>
+                    <h1>${t(currentStep.titleKey)}</h1>
                     ${fields}
                     <p class="login-error" role="alert" hidden></p>
                 </div>
 
                 <div class="login-card-actions">
                     ${registerStep > 1
-                        ? '<button class="login-back-button" type="button">Back</button>'
-                        : '<a class="login-register-link" href="#login">Already have an account</a>'
+                        ? `<button class="login-back-button" type="button">${t('register.back')}</button>`
+                        : `<a class="login-register-link" href="#login">${t('register.haveAccount')}</a>`
                     }
-                    <span class="login-step-count">Step ${registerStep} of ${registrationSteps.length}</span>
-                    <button type="submit">${registerStep < registrationSteps.length ? 'Next' : 'Create'}</button>
+                    <span class="login-step-count">${t('register.step', { step: registerStep, total: registrationSteps.length })}</span>
+                    <button type="submit">${registerStep < registrationSteps.length ? t('register.next') : t('register.create')}</button>
                 </div>
             </form>
         </section>

@@ -743,3 +743,79 @@ body.invoice-modal-open .invoice-modal {
 .invoice-form .file-name[href] {
     color: inherit;
 }
+
+/* Settings page (same frame as the profile page) */
+.settings-content {
+    padding: clamp(24px, 5vw, 48px);
+    color: var(--color-background);
+}
+
+.settings-group {
+    display: grid;
+    width: min(100%, 520px);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    gap: 12px;
+}
+
+.settings-group legend {
+    padding: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.settings-help,
+.settings-notice {
+    margin: 0;
+    font-size: 13px;
+}
+
+.settings-notice {
+    font-weight: 700;
+}
+
+.settings-options {
+    display: grid;
+    gap: 10px;
+}
+
+.settings-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background-color: var(--color-accent-dark);
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.settings-option:has(input:checked) {
+    border-color: var(--color-background);
+}
+
+.settings-option:has(input:focus-visible) {
+    outline: 3px solid var(--color-background);
+    outline-offset: 2px;
+}
+
+.settings-option input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--color-background);
+}
+
+.settings-option-label {
+    flex: 1;
+}
+
+.settings-option-code {
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: var(--color-background);
+    color: var(--color-accent-dark);
+    font-size: 11px;
+}

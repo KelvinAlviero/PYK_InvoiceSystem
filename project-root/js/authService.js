@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 // Talks to the Express API (same origin, so the session cookie is sent automatically).
 // The server is the source of truth for who is logged in; currentUser is only a cache
 // for rendering. Editing it in dev tools does not grant access to any API.
@@ -17,7 +19,7 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
     try {
         response = await fetch(`/api${path}`, options);
     } catch {
-        throw new Error('Could not reach the server. Check your connection and try again.');
+        throw new Error(t('common.networkError'));
     }
 
     let result = null;
@@ -28,7 +30,7 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
     }
 
     if (!response.ok || result?.success === false) {
-        const error = new Error(result?.message || `Request failed (${response.status}).`);
+        const error = new Error(result?.message || t('common.requestFailed', { status: response.status }));
         error.status = response.status;
         throw error;
     }

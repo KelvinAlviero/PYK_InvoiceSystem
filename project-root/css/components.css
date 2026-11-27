@@ -186,3 +186,12 @@ body.sidebar-open .sidebar {
     opacity: 0.55;
     cursor: not-allowed;
 }
+
+.nav-item[aria-current="page"] {
+    background-color: var(--color-accent);
+    box-shadow: inset 4px 0 0 var(--color-background);
+}
+
+.nav-item:not(:disabled):hover {
+    background-color: var(--color-accent);
+}

@@ -1,3 +1,5 @@
+import { t } from '../../i18n.js';
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -8,16 +10,19 @@ function escapeHtml(value) {
 }
 
 // user: the logged-in user from the API, shown on the profile card.
-export function SidebarComponent(onProfileOpen, user = null) {
+// pages: the views this user may open (e.g. ['admin', 'user', ...]); listed under PAGES.
+// activeView: the page currently shown, highlighted in the list.
+// onNavigate(view): called with a page name, 'settings' or 'profile'.
+export function SidebarComponent({ user = null, pages = [], activeView = '', onNavigate = () => {} } = {}) {
     const displayName = user?.email ?? '';
-    const displayCompany = user?.company?.name ?? (user ? 'PYK staff' : '');
+    const displayCompany = user?.company?.name ?? (user ? t('nav.pykStaff') : '');
     const html = `
         <div class="sidebar-backdrop" aria-hidden="true"></div>
-        <aside class="sidebar" id="page-sidebar" aria-label="Sidebar" aria-hidden="true" inert>
+        <aside class="sidebar" id="page-sidebar" aria-label="${t('nav.sidebar')}" aria-hidden="true" inert>
             <div class="sidebar-top-cover" aria-hidden="true"></div>
 
             <div class="sidebar-panel">
-                <button class="sidebar-item profile-card" type="button" aria-label="Open profile">
+                <button class="sidebar-item profile-card" type="button" aria-label="${t('nav.openProfile')}">
                     <div class="profile-avatar" aria-hidden="true"></div>
                     <div class="profile-meta">
                         <span class="profile-name">${escapeHtml(displayName)}</span>
@@ -25,36 +30,31 @@ export function SidebarComponent(onProfileOpen, user = null) {
                     </div>
                 </button>
 
-                <div class="sidebar-section-label">PAGES</div>
-                <button class="sidebar-item nav-item" type="button" data-view="user">
+                <div class="sidebar-section-label">${t('nav.pages')}</div>
+                ${pages.map((page) => `
+                    <button class="sidebar-item nav-item" type="button" data-view="${page}"
+                        ${page === activeView ? 'aria-current="page"' : ''}>
+                        <span class="nav-icon" aria-hidden="true"></span>
+                        <span>${t(`nav.${page}`)}</span>
+                    </button>
+                `).join('')}
+
+                <div class="sidebar-section-label">${t('nav.other')}</div>
+                <button class="sidebar-item nav-item" type="button" data-view="settings"
+                    ${activeView === 'settings' ? 'aria-current="page"' : ''}>
                     <span class="nav-icon" aria-hidden="true"></span>
-                    <span>User Dashboard</span>
-                </button>
-                <button class="sidebar-item nav-item" type="button" data-view="treasury">
-                    <span class="nav-icon" aria-hidden="true"></span>
-                    <span>Treasury</span>
+                    <span>${t('nav.settings')}</span>
                 </button>
 
-                <div class="sidebar-section-label">OTHER</div>
-                <button class="sidebar-item nav-item" type="button" aria-label="Settings (not implemented yet)" disabled>
+                <button class="sidebar-item nav-item" type="button" aria-label="${t('nav.notReady', { name: t('nav.inbox') })}" disabled>
                     <span class="nav-icon" aria-hidden="true"></span>
-                    <span>Settings</span>
-                </button>
-
-                <button class="sidebar-item nav-item" type="button" aria-label="Inbox (not implemented yet)" disabled>
-                    <span class="nav-icon" aria-hidden="true"></span>
-                    <span>Inbox</span>
-                </button>
-
-                <button class="sidebar-item nav-item" type="button" aria-label="Lorem ipsum (not implemented yet)" disabled>
-                    <span class="nav-icon" aria-hidden="true"></span>
-                    <span>Lorem ipsum</span>
+                    <span>${t('nav.inbox')}</span>
                 </button>
             </div>
         </aside>
     `;
 
-    function attachListeners(onNavigate = () => {}) {
+    function attachListeners() {
         const sidebarToggle = document.querySelector(".sidebar-toggle");
         const sidebarBackdrop = document.querySelector(".sidebar-backdrop");
         const sidebar = document.querySelector(".sidebar");
@@ -67,10 +67,13 @@ export function SidebarComponent(onProfileOpen, user = null) {
         function setSidebarOpen(isOpen) {
             document.body.classList.toggle("sidebar-open", isOpen);
             sidebarToggle.setAttribute("aria-expanded", String(isOpen));
-            sidebarToggle.setAttribute("aria-label", isOpen ? "Close sidebar" : "Open sidebar");
+            sidebarToggle.setAttribute("aria-label", isOpen ? t('nav.closeSidebar') : t('nav.openSidebar'));
             sidebar.setAttribute("aria-hidden", String(!isOpen));
             sidebar.inert = !isOpen;
         }
+
+        // A fresh render always starts closed (the body class survives re-renders).
+        setSidebarOpen(false);
 
         sidebarToggle.addEventListener("click", () => {
             setSidebarOpen(sidebarToggle.getAttribute("aria-expanded") !== "true");
@@ -79,7 +82,14 @@ export function SidebarComponent(onProfileOpen, user = null) {
         sidebarBackdrop.addEventListener("click", () => setSidebarOpen(false));
         profileCard.addEventListener("click", () => {
             setSidebarOpen(false);
-            onProfileOpen?.();
+            onNavigate('profile');
+        });
+
+        sidebar.querySelectorAll(".nav-item[data-view]").forEach((button) => {
+            button.addEventListener("click", () => {
+                setSidebarOpen(false);
+                onNavigate(button.dataset.view);
+            });
         });
 
         document.addEventListener("keydown", (event) => {

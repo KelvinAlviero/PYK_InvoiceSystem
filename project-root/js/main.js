@@ -9,11 +9,14 @@ import { submitRegistration } from './Views/Registration/registrationService.js'
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=5';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
 import { AdminView } from './Views/Admin/AdminView.js';
+import { SettingsView } from './Views/Settings/SettingsView.js';
+import { t } from './i18n.js';
 import { apiRequest, changePassword, getCurrentUser, initAuth, login, logout } from './authService.js';
 const appContainer = document.getElementById('app');
 let registrationStep = 1;
 let registrationData = {};
 let loginNotice = '';
+let settingsNotice = '';
 
 // Which views each role may open, and where each lands after login. The API enforces
 // the same rules server-side; this only keeps people off screens they cannot use.
@@ -25,10 +28,10 @@ const roleHomeViews = {
 };
 
 const roleAllowedViews = {
-    vendor: ['user', 'profile'],
-    verification: ['ap-verification', 'profile'],
-    treasury: ['treasury', 'profile'],
-    admin: ['admin', 'user', 'ap-verification', 'treasury', 'profile']
+    vendor: ['user', 'profile', 'settings'],
+    verification: ['ap-verification', 'profile', 'settings'],
+    treasury: ['treasury', 'profile', 'settings'],
+    admin: ['admin', 'user', 'ap-verification', 'treasury', 'profile', 'settings']
 };
 
 function getRoleHomeView(role) {
@@ -61,9 +64,9 @@ function resetSelect(select, placeholder) {
 async function loadRegionOptions(select, path, placeholder) {
     try {
         const options = await apiRequest(path);
-        setSelectOptions(select, options, options.length ? placeholder : 'No locations available');
+        setSelectOptions(select, options, options.length ? placeholder : t('region.none'));
     } catch {
-        resetSelect(select, 'Could not load locations');
+        resetSelect(select, t('region.failed'));
     }
 }
 
@@ -79,20 +82,20 @@ async function attachLocationListeners() {
     }
 
     async function loadCities(provinceId) {
-        resetSelect(citySelect, 'Loading...');
-        resetSelect(villageSelect, 'Choose a village');
-        await loadRegionOptions(citySelect, `/regions/provinces/${encodeURIComponent(provinceId)}/cities`, 'Choose a city/regency');
+        resetSelect(citySelect, t('common.loading'));
+        resetSelect(villageSelect, t('region.chooseVillage'));
+        await loadRegionOptions(citySelect, `/regions/provinces/${encodeURIComponent(provinceId)}/cities`, t('region.chooseCity'));
     }
 
     async function loadVillages(cityId) {
-        resetSelect(villageSelect, 'Loading...');
-        await loadRegionOptions(villageSelect, `/regions/cities/${encodeURIComponent(cityId)}/villages`, 'Choose a village');
+        resetSelect(villageSelect, t('common.loading'));
+        await loadRegionOptions(villageSelect, `/regions/cities/${encodeURIComponent(cityId)}/villages`, t('region.chooseVillage'));
     }
 
     provinceSelect.addEventListener('change', () => loadCities(provinceSelect.value));
     citySelect.addEventListener('change', () => loadVillages(citySelect.value));
 
-    await loadRegionOptions(provinceSelect, '/regions/provinces', 'Choose a province');
+    await loadRegionOptions(provinceSelect, '/regions/provinces', t('region.chooseProvince'));
 
     const { province, cityRegency, village } = registrationData;
     if (province) {
@@ -120,7 +123,7 @@ function restoreRegistrationFields() {
                 field.required = false;
                 field.insertAdjacentHTML(
                     'afterend',
-                    `<p class="login-file-kept">Selected: ${escapeHtml(value.name)} (choose again to replace)</p>`
+                    `<p class="login-file-kept">${escapeHtml(t('register.fileKept', { name: value.name }))}</p>`
                 );
             }
         } else if (field.type === 'checkbox') {
@@ -167,11 +170,11 @@ function attachPasswordFormListeners() {
         const newPassword = form.elements.newPassword.value;
 
         if (newPassword !== form.elements.confirmPassword.value) {
-            showMessage('The new passwords do not match.', 'error');
+            showMessage(t('profile.mismatch'), 'error');
             return;
         }
         if (newPassword === currentPassword) {
-            showMessage('The new password must be different from the current one.', 'error');
+            showMessage(t('profile.sameAsOld'), 'error');
             return;
         }
 
@@ -179,7 +182,7 @@ function attachPasswordFormListeners() {
         try {
             await changePassword(currentPassword, newPassword);
             form.reset();
-            showMessage('Password changed.', 'success');
+            showMessage(t('profile.changed'), 'success');
         } catch (error) {
             showMessage(error.message, 'error');
         } finally {
@@ -220,11 +223,17 @@ function renderApp(activeView = 'user', authMode = 'login') {
         return;
     }
 
-    const sidebar = isLoginView ? null : SidebarComponent(() => renderApp('profile'), currentUser);
+    const sidebar = isLoginView ? null : SidebarComponent({
+        user: currentUser,
+        pages: (roleAllowedViews[userRole] ?? []).filter((view) => !['profile', 'settings'].includes(view)),
+        activeView,
+        onNavigate: (view) => renderApp(view)
+    });
     let currentView = '';
     let treasuryView = null;
     let verificationView = null;
     let adminView = null;
+    let settingsView = null;
 
     if (isLoginView) {
         currentView = authMode === 'register'
@@ -234,6 +243,10 @@ function renderApp(activeView = 'user', authMode = 'login') {
     } else if (userRole) {
         if (activeView === 'profile') {
             currentView = UserProfileView(currentUser);
+        } else if (activeView === 'settings') {
+            settingsView = SettingsView(settingsNotice);
+            settingsNotice = '';
+            currentView = settingsView.html;
         } else if (activeView === 'treasury') {
             treasuryView = TreasuryView();
             currentView = treasuryView.html;
@@ -260,6 +273,10 @@ function renderApp(activeView = 'user', authMode = 'login') {
     treasuryView?.attachListeners();
     verificationView?.attachListeners();
     adminView?.attachListeners();
+    settingsView?.attachListeners(() => {
+        settingsNotice = t('settings.saved');
+        renderApp('settings');
+    });
     if (isLoginView && authMode === 'register') {
         restoreRegistrationFields();
     }
@@ -268,6 +285,10 @@ function renderApp(activeView = 'user', authMode = 'login') {
     }
     if (activeView === 'user') {
         attachInvoiceModalListeners();
+    }
+
+    if (activeView === 'settings') {
+        document.querySelector(".back-home-button")?.addEventListener("click", () => renderApp(getRoleHomeView(userRole)));
     }
 
     if (activeView === 'profile') {
@@ -325,8 +346,8 @@ function renderApp(activeView = 'user', authMode = 'login') {
                 }
 
                 if (isRegistering) {
-                    const result = await submitRegistration({ ...registrationData, ...currentData });
-                    goToLogin(result.message);
+                    await submitRegistration({ ...registrationData, ...currentData });
+                    goToLogin(t('login.registered'));
                     return;
                 }
 
@@ -337,7 +358,7 @@ function renderApp(activeView = 'user', authMode = 'login') {
                 const homeView = getRoleHomeView(user.role);
 
                 if (!homeView) {
-                    throw new Error(`No dashboard is configured for the "${user.role}" role.`);
+                    throw new Error(t('login.noDashboard', { role: user.role }));
                 }
 
                 renderApp(homeView);

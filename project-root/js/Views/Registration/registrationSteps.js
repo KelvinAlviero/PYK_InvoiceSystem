@@ -1,210 +1,154 @@
+import { t } from '../../i18n.js';
+
 function getSubmissionDate() {
     return new Date().toISOString().slice(0, 10);
 }
 
+const BANKS = ['BCA', 'BRI', 'BNI', 'Mandiri'];
+
+// Option values are what the server stores/validates; only the labels are translated.
+function businessTypeOptions() {
+    return `
+        <option value="" selected disabled>${t('register.chooseBusinessType')}</option>
+        <option value="Usaha Berbadan Hukum">${t('register.bt.legal')}</option>
+        <option value="Usaha Perseorangan">${t('register.bt.sole')}</option>
+    `;
+}
+
+function bankFieldset(n, prefix) {
+    return `
+        <fieldset class="login-fieldset">
+            <legend>${t('register.bank', { n })}</legend>
+            <div class="login-field">
+                <label for="bank-${prefix}-name">${t('register.bankName')}</label>
+                <select id="bank-${prefix}-name" name="bank${prefix === 'one' ? 'One' : 'Two'}Name" required>
+                    <option value="" selected disabled>${t('register.chooseBank')}</option>
+                    ${BANKS.map((bank) => `<option value="${bank}">${bank}</option>`).join('')}
+                </select>
+            </div>
+            <div class="login-field">
+                <label for="bank-${prefix}-number">${t('register.bankNumber')}</label>
+                <input id="bank-${prefix}-number" name="bank${prefix === 'one' ? 'One' : 'Two'}Number" type="text" required>
+            </div>
+            <div class="login-field">
+                <label for="bank-${prefix}-owner">${t('register.bankOwner')}</label>
+                <input id="bank-${prefix}-owner" name="bank${prefix === 'one' ? 'One' : 'Two'}Owner" type="text" required>
+            </div>
+        </fieldset>
+    `;
+}
+
+function fileField(id, name, labelKey) {
+    return `
+        <div class="login-field">
+            <label for="${id}">${t(labelKey)}</label>
+            <input id="${id}" name="${name}" type="file" accept=".pdf,application/pdf" required>
+        </div>
+    `;
+}
+
+function textField(id, name, labelKey, type = 'text') {
+    return `
+        <div class="login-field">
+            <label for="${id}">${t(labelKey)}</label>
+            <input id="${id}" name="${name}" type="${type}" required>
+        </div>
+    `;
+}
+
+// Each step's fields are built when the step is shown, so they follow the chosen language.
 export const registrationSteps = [
     {
-        title: 'Terms of Payment',
-        fields: `
+        titleKey: 'register.step1',
+        fields: () => `
             <div class="login-field">
-                <label for="register-email">Email</label>
+                <label for="register-email">${t('login.email')}</label>
                 <input id="register-email" name="email" type="email" autocomplete="username" required>
             </div>
             <div class="login-field">
-                <label for="register-password">Password</label>
+                <label for="register-password">${t('login.password')}</label>
                 <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
             </div>
-            <div class="login-field">
-                <label for="terms-document">Terms of Payment document (PDF)</label>
-                <input id="terms-document" name="termsDocument" type="file" accept=".pdf,application/pdf" required>
-            </div>
+            ${fileField('terms-document', 'termsDocument', 'register.termsDocument')}
             <label class="login-checkbox">
                 <input name="termsAccepted" type="checkbox" required>
-                I agree to the Terms of Payment
+                ${t('register.termsAccepted')}
             </label>
         `
     },
     {
-        title: 'Informasi Perusahaan',
-        fields: `
+        titleKey: 'register.step2',
+        fields: () => `
+            ${textField('company-entity', 'entity', 'register.entity')}
             <div class="login-field">
-                <label for="company-entity">Entitas</label>
-                <input id="company-entity" name="entity" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="submission-date">Tanggal Pengajuan</label>
+                <label for="submission-date">${t('register.submissionDate')}</label>
                 <input id="submission-date" type="date" value="${getSubmissionDate()}" readonly>
             </div>
+            ${textField('vendor-name', 'vendorName', 'register.vendorName')}
+            ${textField('company-street', 'street', 'register.street')}
+            ${textField('company-block', 'block', 'register.block')}
             <div class="login-field">
-                <label for="vendor-name">Nama Vendor</label>
-                <input id="vendor-name" name="vendorName" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="company-street">Jalan</label>
-                <input id="company-street" name="street" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="company-block">Blok</label>
-                <input id="company-block" name="block" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="company-province">Provinsi</label>
+                <label for="company-province">${t('register.province')}</label>
                 <select id="company-province" name="province" required disabled>
-                    <option value="" selected disabled>Loading provinces...</option>
+                    <option value="" selected disabled>${t('common.loading')}</option>
                 </select>
             </div>
             <div class="login-field">
-                <label for="company-city">Kota/Kabupaten</label>
+                <label for="company-city">${t('register.city')}</label>
                 <select id="company-city" name="cityRegency" required disabled>
-                    <option value="" selected disabled>Choose a city/regency</option>
+                    <option value="" selected disabled>${t('region.chooseCity')}</option>
                 </select>
             </div>
             <div class="login-field">
-                <label for="company-village">Kelurahan/Desa</label>
+                <label for="company-village">${t('register.village')}</label>
                 <select id="company-village" name="village" required disabled>
-                    <option value="" selected disabled>Choose a village</option>
+                    <option value="" selected disabled>${t('region.chooseVillage')}</option>
                 </select>
             </div>
-            <div class="login-field">
-                <label for="company-phone">Nomor Telepon</label>
-                <input id="company-phone" name="phone" type="tel" required>
-            </div>
-            <div class="login-field">
-                <label for="company-npwp">NPWP Perusahaan</label>
-                <input id="company-npwp" name="companyNpwp" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="company-email">Surel (Email)</label>
-                <input id="company-email" name="companyEmail" type="email" required>
-            </div>
-            <div class="login-field">
-                <label for="company-document">Informasi perusahaan (PDF)</label>
-                <input id="company-document" name="companyDocument" type="file" accept=".pdf,application/pdf" required>
-            </div>
+            ${textField('company-phone', 'phone', 'register.phone', 'tel')}
+            ${textField('company-npwp', 'companyNpwp', 'register.companyNpwp')}
+            ${textField('company-email', 'companyEmail', 'register.companyEmail', 'email')}
+            ${fileField('company-document', 'companyDocument', 'register.companyDocument')}
         `
     },
     {
-        title: 'Data Bank',
-        fields: `
-            <fieldset class="login-fieldset">
-                <legend>Data bank 1</legend>
-                <div class="login-field">
-                    <label for="bank-one-name">Nama Bank</label>
-                    <select id="bank-one-name" name="bankOneName" required>
-                        <option value="" selected disabled>Choose a bank</option>
-                        <option value="BCA">BCA</option>
-                        <option value="BRI">BRI</option>
-                        <option value="BNI">BNI</option>
-                        <option value="Mandiri">Mandiri</option>
-                    </select>
-                </div>
-                <div class="login-field">
-                    <label for="bank-one-number">Nomor Rekening</label>
-                    <input id="bank-one-number" name="bankOneNumber" type="text" required>
-                </div>
-                <div class="login-field">
-                    <label for="bank-one-owner">Nama Pemilik Bank</label>
-                    <input id="bank-one-owner" name="bankOneOwner" type="text" required>
-                </div>
-            </fieldset>
-            <fieldset class="login-fieldset">
-                <legend>Data bank 2</legend>
-                <div class="login-field">
-                    <label for="bank-two-name">Nama Bank</label>
-                    <select id="bank-two-name" name="bankTwoName" required>
-                        <option value="" selected disabled>Choose a bank</option>
-                        <option value="BCA">BCA</option>
-                        <option value="BRI">BRI</option>
-                        <option value="BNI">BNI</option>
-                        <option value="Mandiri">Mandiri</option>
-                    </select>
-                </div>
-                <div class="login-field">
-                    <label for="bank-two-number">Nomor Rekening</label>
-                    <input id="bank-two-number" name="bankTwoNumber" type="text" required>
-                </div>
-                <div class="login-field">
-                    <label for="bank-two-owner">Nama Pemilik Bank</label>
-                    <input id="bank-two-owner" name="bankTwoOwner" type="text" required>
-                </div>
-            </fieldset>
-            <div class="login-field">
-                <label for="bank-document">Data bank (PDF)</label>
-                <input id="bank-document" name="bankDocument" type="file" accept=".pdf,application/pdf" required>
-            </div>
+        titleKey: 'register.step3',
+        fields: () => `
+            ${bankFieldset(1, 'one')}
+            ${bankFieldset(2, 'two')}
+            ${fileField('bank-document', 'bankDocument', 'register.bankDocument')}
         `
     },
     {
-        title: 'Extras',
-        fields: `
+        titleKey: 'register.step4',
+        fields: () => `
+            ${textField('owner-name', 'ownerName', 'register.ownerName')}
+            ${textField('owner-contact', 'ownerContact', 'register.ownerContact', 'tel')}
+            ${textField('sales-person', 'salesPerson', 'register.salesPerson')}
+            ${textField('sales-contact', 'salesContact', 'register.salesContact', 'tel')}
             <div class="login-field">
-                <label for="owner-name">Pemilik</label>
-                <input id="owner-name" name="ownerName" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="owner-contact">Kontak Pemilik</label>
-                <input id="owner-contact" name="ownerContact" type="tel" required>
-            </div>
-            <div class="login-field">
-                <label for="sales-person">Penanggung Jawab Sales</label>
-                <input id="sales-person" name="salesPerson" type="text" required>
-            </div>
-            <div class="login-field">
-                <label for="sales-contact">Kontak Sales</label>
-                <input id="sales-contact" name="salesContact" type="tel" required>
-            </div>
-            <div class="login-field">
-                <label for="business-type">Tipe Bisnis</label>
+                <label for="business-type">${t('register.businessType')}</label>
                 <select id="business-type" name="businessType" required>
-                    <option value="" selected disabled>Choose a business type</option>
-                    <option value="Usaha Berbadan Hukum">Usaha Berbadan Hukum</option>
-                    <option value="Usaha Perseorangan">Usaha Perseorangan</option>
+                    ${businessTypeOptions()}
                 </select>
             </div>
-            <div class="login-field">
-                <label for="extras-document">Dokumen tambahan (PDF)</label>
-                <input id="extras-document" name="extrasDocument" type="file" accept=".pdf,application/pdf" required>
-            </div>
+            ${fileField('extras-document', 'extrasDocument', 'register.extrasDocument')}
         `
     },
     {
-        title: 'Business documents',
+        titleKey: 'register.step5',
         fields: (registrationData) => registrationData.businessType === 'Usaha Perseorangan'
             ? `
-                <div class="login-field">
-                    <label for="sole-nib">Nomor Induk Berusaha (NIB) (PDF)</label>
-                    <input id="sole-nib" name="businessLicenseDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
-                <div class="login-field">
-                    <label for="sole-npwp">Nomor Pokok Wajib Pajak (PDF)</label>
-                    <input id="sole-npwp" name="taxDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
-                <div class="login-field">
-                    <label for="sole-ktp">Kartu Tanda Penduduk (Pemilik) (PDF)</label>
-                    <input id="sole-ktp" name="identityDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
+                ${fileField('sole-nib', 'businessLicenseDocument', 'register.nib')}
+                ${fileField('sole-npwp', 'taxDocument', 'register.npwp')}
+                ${fileField('sole-ktp', 'identityDocument', 'register.ktpOwner')}
             `
             : `
-                <div class="login-field">
-                    <label for="legal-nib">Nomor Induk Berusaha (NIB) (PDF)</label>
-                    <input id="legal-nib" name="businessLicenseDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
-                <div class="login-field">
-                    <label for="legal-npwp">Nomor Pokok Wajib Pajak (PDF)</label>
-                    <input id="legal-npwp" name="taxDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
-                <div class="login-field">
-                    <label for="legal-ktp">Kartu Tanda Penduduk (Direktur) (PDF)</label>
-                    <input id="legal-ktp" name="identityDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
-                <div class="login-field">
-                    <label for="deed-document">Akta Pendirian (PDF)</label>
-                    <input id="deed-document" name="establishmentDeedDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
-                <div class="login-field">
-                    <label for="ministry-document">SK Kemenkumham (PDF)</label>
-                    <input id="ministry-document" name="ministryApprovalDocument" type="file" accept=".pdf,application/pdf" required>
-                </div>
+                ${fileField('legal-nib', 'businessLicenseDocument', 'register.nib')}
+                ${fileField('legal-npwp', 'taxDocument', 'register.npwp')}
+                ${fileField('legal-ktp', 'identityDocument', 'register.ktpDirector')}
+                ${fileField('deed-document', 'establishmentDeedDocument', 'register.deed')}
+                ${fileField('ministry-document', 'ministryApprovalDocument', 'register.ministry')}
             `
     }
 ];

@@ -1,11 +1,13 @@
+import { t } from '../../i18n.js';
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 function checkFile(file) {
     if (file.size > MAX_FILE_SIZE) {
-        throw new Error(`${file.name} is larger than 5 MB.`);
+        throw new Error(t('common.fileTooLarge', { name: file.name }));
     }
     if (file.type && file.type !== 'application/pdf') {
-        throw new Error(`${file.name} is not a PDF file.`);
+        throw new Error(t('common.notPdf', { name: file.name }));
     }
     return file;
 }

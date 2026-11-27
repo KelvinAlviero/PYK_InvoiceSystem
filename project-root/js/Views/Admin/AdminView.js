@@ -1,61 +1,26 @@
 import { apiRequest, getCurrentUser } from '../../authService.js';
+import { getLocale, t } from '../../i18n.js';
 
 // Admin dashboard: monitor the invoice pipeline, approve vendor registrations,
 // manage logins, and read the notification log. AP and Treasury decisions on
 // invoices stay on their own pages; here they are read-only.
 
-const TABS = [
-    { id: 'pipeline', label: 'Invoice pipeline' },
-    { id: 'vendors', label: 'Vendor registrations' },
-    { id: 'users', label: 'Users' },
-    { id: 'notifications', label: 'Notification log' }
-];
-
-const INVOICE_STAGES = [
-    { status: 'submitted', label: '1. Menunggu Verifikasi AP' },
-    { status: 'rejected', label: 'Tidak Sesuai (Revisi Vendor)' },
-    { status: 'approved', label: '2. Sesuai · Siap Dibayar' },
-    { status: 'paid', label: '3. Lunas / Dibayar' }
-];
-
-const INVOICE_STATUS_LABELS = {
-    submitted: 'Menunggu Verifikasi AP',
-    rejected: 'Tidak Sesuai',
-    approved: 'Sesuai · Proses Treasury',
-    paid: 'Lunas'
-};
-
+const TABS = ['pipeline', 'vendors', 'users', 'notifications'];
+const INVOICE_STAGES = ['submitted', 'rejected', 'approved', 'paid'];
 const INVOICE_DOCUMENTS = [
-    ['purchase_order', 'Purchase Order (PO)'],
-    ['goods_receipt', 'Goods Receipt (GR)'],
-    ['supplier_invoice', 'Invoice Supplier'],
-    ['delivery_note', 'Surat Jalan'],
-    ['tax_invoice', 'Faktur Pajak'],
-    ['notes', 'Notes (opsional)'],
-    ['payment_proof', 'Bukti Transfer']
+    'purchase_order', 'goods_receipt', 'supplier_invoice', 'delivery_note',
+    'tax_invoice', 'notes', 'payment_proof'
 ];
 
-const VENDOR_DOCUMENT_LABELS = {
-    terms_of_payment: 'Terms of Payment',
-    company_information: 'Informasi Perusahaan',
-    bank_information: 'Data Bank',
-    extras: 'Dokumen Tambahan',
-    business_license: 'NIB',
-    tax_document: 'NPWP',
-    identity_document: 'KTP',
-    establishment_deed: 'Akta Pendirian',
-    ministry_approval: 'SK Kemenkumham'
-};
-
-const EVENT_LABELS = {
-    submitted: 'Disubmit vendor',
-    resubmitted: 'Disubmit ulang (revisi)',
-    approved: 'AP: Sesuai',
-    rejected: 'AP: Tidak Sesuai',
-    paid: 'Treasury: Dibayar'
-};
-
-const ROLE_LABELS = { vendor: 'Vendor', verification: 'AP Verification', treasury: 'Treasury', admin: 'Admin' };
+// Labels are looked up at render time so they follow the chosen language.
+const invoiceStatusLabel = (status) => t(`admin.status.${status}`);
+const roleLabel = (role) => t(`role.${role}`);
+const bankLine = (bank) => t('common.bankAccount', { bank: bank.bank_name, number: bank.account_number, holder: bank.account_holder });
+// business_type values are stored in Indonesian; show them in the chosen language.
+const businessTypeLabel = (value) => ({
+    'Usaha Berbadan Hukum': t('register.bt.legal'),
+    'Usaha Perseorangan': t('register.bt.sole')
+}[value] ?? value);
 
 // Survives re-renders while the admin stays on this page.
 const state = {
@@ -83,7 +48,7 @@ function rupiah(value) {
 
 function dateTime(value) {
     return value
-        ? new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+        ? new Date(value).toLocaleString(getLocale(), { dateStyle: 'medium', timeStyle: 'short' })
         : '-';
 }
 
@@ -100,7 +65,7 @@ function emptyState(text) {
 }
 
 function errorState(error) {
-    return `<p class="admin-empty">Could not load: ${escapeHtml(error.message)}</p>`;
+    return `<p class="admin-empty">${escapeHtml(t('common.loadFailed', { error: error.message }))}</p>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,16 +74,16 @@ function errorState(error) {
 
 export function AdminView() {
     const html = `
-        <section class="admin-page" aria-label="Admin dashboard">
+        <section class="admin-page" aria-label="${t('admin.ariaLabel')}">
             <header class="admin-header">
                 <div>
-                    <h1>Admin dashboard</h1>
-                    <p>Pantau alur tagihan, setujui vendor baru, dan kelola akun.</p>
+                    <h1>${t('admin.title')}</h1>
+                    <p>${t('admin.subtitle')}</p>
                 </div>
-                <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
+                <nav class="admin-tabs" role="tablist" aria-label="${t('admin.sections')}">
                     ${TABS.map((tab) => `
-                        <button class="admin-tab" type="button" role="tab" data-tab="${tab.id}"
-                            aria-selected="${tab.id === state.tab}">${escapeHtml(tab.label)}</button>
+                        <button class="admin-tab" type="button" role="tab" data-tab="${tab}"
+                            aria-selected="${tab === state.tab}">${escapeHtml(t(`admin.tab.${tab}`))}</button>
                     `).join('')}
                 </nav>
             </header>
@@ -158,7 +123,7 @@ function renderTab() {
     if (!container) {
         return;
     }
-    container.innerHTML = emptyState('Loading...');
+    container.innerHTML = emptyState(t('common.loading'));
     renderers[state.tab]?.(container, () => token === renderToken);
 }
 
@@ -185,24 +150,24 @@ async function renderPipeline(container, isCurrent) {
         return;
     }
 
-    const filterLabel = state.invoiceStatus ? INVOICE_STATUS_LABELS[state.invoiceStatus] : 'Semua tagihan';
+    const filterLabel = state.invoiceStatus ? invoiceStatusLabel(state.invoiceStatus) : t('admin.allInvoices');
 
     container.innerHTML = `
         <div class="admin-stages">
-            ${INVOICE_STAGES.map(({ status, label }) => `
+            ${INVOICE_STAGES.map((status) => `
                 <button class="admin-stage" type="button" data-status="${status}"
                     aria-pressed="${state.invoiceStatus === status}">
-                    <span class="admin-stage-label">${escapeHtml(label)}</span>
+                    <span class="admin-stage-label">${escapeHtml(t(`admin.stage.${status}`))}</span>
                     <span class="admin-stage-count">${stats[status].count}</span>
                     <span class="admin-stage-total">${rupiah(stats[status].total)}</span>
                 </button>
             `).join('')}
         </div>
         <div class="admin-split">
-            <section class="admin-panel" aria-label="Invoice list">
+            <section class="admin-panel" aria-label="${t('admin.invoiceList')}">
                 <header class="admin-panel-header">
                     <h2>${escapeHtml(filterLabel)}</h2>
-                    <span class="admin-status">${invoices.length} tagihan</span>
+                    <span class="admin-status">${t('common.invoiceCount', { count: invoices.length })}</span>
                 </header>
                 <div class="admin-list">
                     ${invoices.length ? invoices.map((invoice) => `
@@ -210,21 +175,21 @@ async function renderPipeline(container, isCurrent) {
                             aria-current="${invoice.id === state.selectedInvoiceId}">
                             <span class="admin-row-top">
                                 <span class="admin-row-title">${escapeHtml(invoice.invoice_code)} · ${escapeHtml(invoice.vendor_name)}</span>
-                                ${statusPill(invoice.status, INVOICE_STATUS_LABELS[invoice.status])}
+                                ${statusPill(invoice.status, invoiceStatusLabel(invoice.status))}
                             </span>
                             <span class="admin-row-bottom">
                                 <span class="admin-muted">${escapeHtml(invoice.branch_name)} · PO ${escapeHtml(invoice.po_number)}</span>
                                 <strong>${rupiah(invoice.amount)}</strong>
                             </span>
-                            <span class="admin-muted">Disubmit ${dateTime(invoice.submitted_at)}${invoice.revision > 1 ? ` · revisi ke-${invoice.revision}` : ''}</span>
+                            <span class="admin-muted">${escapeHtml(t('admin.submittedOn', { date: dateTime(invoice.submitted_at) }))}${invoice.revision > 1 ? escapeHtml(t('admin.revisionSuffix', { n: invoice.revision })) : ''}</span>
                         </button>
-                    `).join('') : emptyState('Belum ada tagihan di tahap ini.')}
+                    `).join('') : emptyState(t('admin.noInvoicesInStage'))}
                 </div>
             </section>
-            <section class="admin-panel" aria-label="Invoice detail">
-                <header class="admin-panel-header"><h2>Detail tagihan</h2></header>
+            <section class="admin-panel" aria-label="${t('admin.invoiceDetail')}">
+                <header class="admin-panel-header"><h2>${t('admin.invoiceDetail')}</h2></header>
                 <div class="admin-panel-body admin-invoice-detail">
-                    ${emptyState('Pilih tagihan di sebelah kiri untuk melihat dokumen dan riwayatnya.')}
+                    ${emptyState(t('admin.pickInvoice'))}
                 </div>
             </section>
         </div>
@@ -254,7 +219,7 @@ async function renderPipeline(container, isCurrent) {
 
 async function renderInvoiceDetail(target, isCurrent) {
     const id = state.selectedInvoiceId;
-    target.innerHTML = emptyState('Loading...');
+    target.innerHTML = emptyState(t('common.loading'));
     let invoice;
     try {
         invoice = await apiRequest(`/invoices/${encodeURIComponent(id)}`);
@@ -274,59 +239,60 @@ async function renderInvoiceDetail(target, isCurrent) {
             <div>
                 <p class="admin-eyebrow">${escapeHtml(invoice.invoice_code)} · ${escapeHtml(invoice.vendor_code)}</p>
                 <h3>${escapeHtml(invoice.vendor_name)}</h3>
-                ${statusPill(invoice.status, INVOICE_STATUS_LABELS[invoice.status])}
+                ${statusPill(invoice.status, invoiceStatusLabel(invoice.status))}
             </div>
             <div>
-                <p class="admin-eyebrow">TOTAL TAGIHAN</p>
+                <p class="admin-eyebrow">${t('admin.totalInvoice')}</p>
                 <div class="admin-amount">${rupiah(invoice.amount)}</div>
             </div>
         </div>
 
         <dl class="admin-fields">
-            ${field('Nama Cabang', invoice.branch_name)}
-            ${field('No. PO', invoice.po_number)}
-            ${field('No. Invoice Vendor', invoice.invoice_number)}
-            ${field('Revisi', String(invoice.revision))}
-            ${field('Disubmit', dateTime(invoice.submitted_at))}
-            ${field('Catatan Vendor', invoice.vendor_note)}
-            ${invoice.ap_note ? field('Catatan AP', invoice.ap_note) : ''}
+            ${field(t('admin.branch'), invoice.branch_name)}
+            ${field(t('admin.po'), invoice.po_number)}
+            ${field(t('admin.vendorInvoice'), invoice.invoice_number)}
+            ${field(t('admin.revision'), String(invoice.revision))}
+            ${field(t('admin.submitted'), dateTime(invoice.submitted_at))}
+            ${field(t('admin.vendorNote'), invoice.vendor_note)}
+            ${invoice.ap_note ? field(t('admin.apNote'), invoice.ap_note) : ''}
             ${invoice.status === 'paid' ? `
-                ${field('Dibayar', dateTime(invoice.paid_at))}
-                ${field('Metode', invoice.payment_method)}
-                ${field('No. Referensi Bank', invoice.payment_reference)}
-                ${field('Rekening Tujuan', paidAccount
-                    ? `${paidAccount.bank_name} ${paidAccount.account_number} a.n. ${paidAccount.account_holder}`
-                    : `Rekening ${invoice.paid_to_account}`)}
+                ${field(t('admin.paidAt'), dateTime(invoice.paid_at))}
+                ${field(t('admin.method'), invoice.payment_method)}
+                ${field(t('admin.reference'), invoice.payment_reference)}
+                ${field(t('admin.paidTo'), paidAccount
+                    ? bankLine(paidAccount)
+                    : t('admin.accountN', { n: invoice.paid_to_account }))}
             ` : ''}
         </dl>
 
-        <h4 class="admin-section-title">Dokumen</h4>
+        <h4 class="admin-section-title">${t('admin.documents')}</h4>
         <div class="admin-docs">
-            ${INVOICE_DOCUMENTS.map(([type, label]) => {
+            ${INVOICE_DOCUMENTS.map((type) => {
+                const label = type === 'notes' ? t('admin.notesOptional') : t(`doc.${type}`);
                 const doc = documents.get(type);
                 return doc
                     ? `<a class="admin-doc" href="${escapeHtml(doc.url)}" target="_blank" rel="noopener">
-                            <span><strong>${escapeHtml(label)}</strong>${escapeHtml(doc.original_name)}</span><span>Buka ↗</span>
+                            <span><strong>${escapeHtml(label)}</strong>${escapeHtml(doc.original_name)}</span><span>${t('common.open')} ↗</span>
                        </a>`
                     : `<span class="admin-doc" aria-disabled="true">
-                            <span><strong>${escapeHtml(label)}</strong>Tidak ada</span>
+                            <span><strong>${escapeHtml(label)}</strong>${t('admin.notProvided')}</span>
                        </span>`;
             }).join('')}
         </div>
 
-        <h4 class="admin-section-title">Rekening Vendor</h4>
+        <h4 class="admin-section-title">${t('admin.vendorAccounts')}</h4>
         <dl class="admin-fields">
             ${invoice.bankAccounts.map((bank) => field(
-                `Rekening ${bank.account_index}`,
-                `${bank.bank_name} ${bank.account_number} a.n. ${bank.account_holder}`
-            )).join('') || field('Rekening', 'Tidak ada data')}
+                t('admin.accountN', { n: bank.account_index }),
+                bankLine(bank)
+            )).join('') || field(t('admin.vendorAccounts'), t('admin.noBankData'))}
         </dl>
 
-        <h4 class="admin-section-title">Riwayat</h4>
+        <h4 class="admin-section-title">${t('admin.history')}</h4>
         <ol class="admin-timeline">
             ${invoice.events.map((event) => `
                 <li data-action="${escapeHtml(event.action)}">
-                    <strong>${escapeHtml(EVENT_LABELS[event.action] ?? event.action)}</strong>
+                    <strong>${escapeHtml(t(`admin.event.${event.action}`))}</strong>
                     <span class="admin-muted"> · ${dateTime(event.created_at)} · ${escapeHtml(event.actor_email)}</span>
                     ${event.note ? `<p class="admin-note">${escapeHtml(event.note)}</p>` : ''}
                 </li>
@@ -353,11 +319,11 @@ async function renderVendors(container, isCurrent) {
         return;
     }
 
-    const filters = [['pending', 'Menunggu review'], ['approved', 'Disetujui'], ['rejected', 'Ditolak']];
+    const filters = ['pending', 'approved', 'rejected'].map((status) => [status, t(`admin.vendorStatus.${status}`)]);
 
     container.innerHTML = `
         <div class="admin-split">
-            <section class="admin-panel" aria-label="Vendor list">
+            <section class="admin-panel" aria-label="${t('admin.vendorList')}">
                 <header class="admin-panel-header">
                     <div class="admin-tabs">
                         ${filters.map(([status, label]) => `
@@ -365,7 +331,7 @@ async function renderVendors(container, isCurrent) {
                                 aria-pressed="${state.vendorStatus === status}">${label}</button>
                         `).join('')}
                     </div>
-                    <span class="admin-status">${vendors.length} vendor</span>
+                    <span class="admin-status">${t('admin.vendorCount', { count: vendors.length })}</span>
                 </header>
                 <div class="admin-list">
                     ${vendors.length ? vendors.map((vendor) => `
@@ -376,18 +342,18 @@ async function renderVendors(container, isCurrent) {
                                 <span class="admin-muted">${escapeHtml(vendor.vendor_code)}</span>
                             </span>
                             <span class="admin-row-bottom">
-                                <span class="admin-muted">${escapeHtml(vendor.business_type)}</span>
+                                <span class="admin-muted">${escapeHtml(businessTypeLabel(vendor.business_type))}</span>
                                 <span class="admin-muted">${escapeHtml(vendor.login_email ?? '')}</span>
                             </span>
-                            <span class="admin-muted">Diajukan ${dateTime(vendor.submitted_at)}</span>
+                            <span class="admin-muted">${escapeHtml(t('admin.appliedOn', { date: dateTime(vendor.submitted_at) }))}</span>
                         </button>
-                    `).join('') : emptyState('Tidak ada vendor di daftar ini.')}
+                    `).join('') : emptyState(t('admin.noVendors'))}
                 </div>
             </section>
-            <section class="admin-panel" aria-label="Vendor detail">
-                <header class="admin-panel-header"><h2>Detail vendor</h2></header>
+            <section class="admin-panel" aria-label="${t('admin.vendorDetail')}">
+                <header class="admin-panel-header"><h2>${t('admin.vendorDetail')}</h2></header>
                 <div class="admin-panel-body admin-vendor-detail">
-                    ${emptyState('Pilih vendor untuk melihat data dan dokumennya.')}
+                    ${emptyState(t('admin.pickVendor'))}
                 </div>
             </section>
         </div>
@@ -417,7 +383,7 @@ async function renderVendors(container, isCurrent) {
 
 async function renderVendorDetail(target, isCurrent) {
     const id = state.selectedVendorId;
-    target.innerHTML = emptyState('Loading...');
+    target.innerHTML = emptyState(t('common.loading'));
     let vendor;
     try {
         vendor = await apiRequest(`/vendors/${encodeURIComponent(id)}`);
@@ -429,7 +395,7 @@ async function renderVendorDetail(target, isCurrent) {
         return;
     }
 
-    const statusLabels = { pending: 'Menunggu review', approved: 'Disetujui', rejected: 'Ditolak' };
+    const statusLabels = { pending: t('admin.vendorStatus.pending'), approved: t('admin.vendorStatus.approved'), rejected: t('admin.vendorStatus.rejected') };
 
     target.innerHTML = `
         <div class="admin-detail-heading">
@@ -441,47 +407,47 @@ async function renderVendorDetail(target, isCurrent) {
         </div>
 
         <dl class="admin-fields">
-            ${field('Tipe Bisnis', vendor.business_type)}
-            ${field('NPWP Perusahaan', vendor.company_npwp)}
-            ${field('Alamat', `${vendor.street} ${vendor.block}, ${vendor.village}, ${vendor.city}, ${vendor.province}`)}
-            ${field('Telepon', vendor.phone)}
-            ${field('Email Perusahaan', vendor.company_email)}
-            ${field('Login', vendor.users.map((user) => user.email).join(', '))}
-            ${field('Pemilik', `${vendor.owner_name} (${vendor.owner_contact})`)}
-            ${field('Sales', `${vendor.sales_person} (${vendor.sales_contact})`)}
-            ${field('Diajukan', dateTime(vendor.submitted_at))}
-            ${vendor.reviewed_at ? field('Direview', `${dateTime(vendor.reviewed_at)} oleh ${vendor.reviewed_by_email ?? '-'}`) : ''}
-            ${vendor.review_note ? field('Catatan Review', vendor.review_note) : ''}
+            ${field(t('admin.businessType'), businessTypeLabel(vendor.business_type))}
+            ${field(t('admin.npwp'), vendor.company_npwp)}
+            ${field(t('admin.address'), `${vendor.street} ${vendor.block}, ${vendor.village}, ${vendor.city}, ${vendor.province}`)}
+            ${field(t('admin.phone'), vendor.phone)}
+            ${field(t('admin.companyEmail'), vendor.company_email)}
+            ${field(t('admin.login'), vendor.users.map((user) => user.email).join(', '))}
+            ${field(t('admin.owner'), `${vendor.owner_name} (${vendor.owner_contact})`)}
+            ${field(t('admin.sales'), `${vendor.sales_person} (${vendor.sales_contact})`)}
+            ${field(t('admin.applied'), dateTime(vendor.submitted_at))}
+            ${vendor.reviewed_at ? field(t('admin.reviewed'), t('admin.reviewedBy', { date: dateTime(vendor.reviewed_at), email: vendor.reviewed_by_email ?? '-' })) : ''}
+            ${vendor.review_note ? field(t('admin.reviewNote'), vendor.review_note) : ''}
         </dl>
 
-        <h4 class="admin-section-title">Rekening Bank</h4>
+        <h4 class="admin-section-title">${t('admin.bankAccounts')}</h4>
         <dl class="admin-fields">
             ${vendor.bankAccounts.map((bank) => field(
-                `Rekening ${bank.account_index}`,
-                `${bank.bank_name} ${bank.account_number} a.n. ${bank.account_holder}`
+                t('admin.accountN', { n: bank.account_index }),
+                bankLine(bank)
             )).join('')}
         </dl>
 
-        <h4 class="admin-section-title">Dokumen</h4>
+        <h4 class="admin-section-title">${t('admin.documents')}</h4>
         <div class="admin-docs">
             ${vendor.documents.map((doc) => `
                 <a class="admin-doc" href="${escapeHtml(doc.url)}" target="_blank" rel="noopener">
-                    <span><strong>${escapeHtml(VENDOR_DOCUMENT_LABELS[doc.document_type] ?? doc.document_type)}</strong>${escapeHtml(doc.original_name)}</span>
-                    <span>Buka ↗</span>
+                    <span><strong>${escapeHtml(t(`vdoc.${doc.document_type}`))}</strong>${escapeHtml(doc.original_name)}</span>
+                    <span>${t('common.open')} ↗</span>
                 </a>
             `).join('')}
         </div>
 
         ${vendor.status === 'pending' ? `
-            <h4 class="admin-section-title">Keputusan</h4>
+            <h4 class="admin-section-title">${t('admin.decision')}</h4>
             <label class="admin-field">
-                Catatan (wajib jika ditolak)
+                ${t('admin.decisionNote')}
                 <textarea class="admin-vendor-note" maxlength="1000"></textarea>
             </label>
             <p class="admin-message" role="status" hidden></p>
             <div class="admin-actions">
-                <button class="admin-button admin-button-danger" type="button" data-decision="reject">Tolak</button>
-                <button class="admin-button admin-button-success" type="button" data-decision="approve">Setujui vendor</button>
+                <button class="admin-button admin-button-danger" type="button" data-decision="reject">${t('admin.rejectVendor')}</button>
+                <button class="admin-button admin-button-success" type="button" data-decision="approve">${t('admin.approveVendor')}</button>
             </div>
         ` : ''}
     `;
@@ -494,7 +460,7 @@ async function renderVendorDetail(target, isCurrent) {
             const buttons = target.querySelectorAll('[data-decision]');
 
             if (decision === 'reject' && !note) {
-                message.textContent = 'Tulis catatan alasan penolakan untuk vendor.';
+                message.textContent = t('admin.rejectNoteRequired');
                 message.dataset.kind = 'error';
                 message.hidden = false;
                 return;
@@ -537,55 +503,55 @@ async function renderUsers(container, isCurrent) {
     state.usersFlash = '';
 
     container.innerHTML = `
-        <section class="admin-panel" aria-label="Create staff account">
-            <header class="admin-panel-header"><h2>Buat akun staff</h2></header>
+        <section class="admin-panel" aria-label="${t('admin.createStaff')}">
+            <header class="admin-panel-header"><h2>${t('admin.createStaff')}</h2></header>
             <div class="admin-panel-body">
                 <form class="admin-form admin-staff-form">
                     <label class="admin-field">
-                        Email
+                        ${t('admin.email')}
                         <input name="email" type="email" autocomplete="off" required>
                     </label>
                     <label class="admin-field">
-                        Password awal (min. 8)
+                        ${t('admin.initialPassword')}
                         <input name="password" type="password" autocomplete="new-password" minlength="8" required>
                     </label>
                     <label class="admin-field">
-                        Role
+                        ${t('admin.role')}
                         <select name="role" required>
-                            <option value="verification">AP Verification</option>
-                            <option value="treasury">Treasury</option>
-                            <option value="admin">Admin</option>
+                            <option value="verification">${roleLabel('verification')}</option>
+                            <option value="treasury">${roleLabel('treasury')}</option>
+                            <option value="admin">${roleLabel('admin')}</option>
                         </select>
                     </label>
-                    <button class="admin-button" type="submit">Buat akun</button>
+                    <button class="admin-button" type="submit">${t('admin.createAccount')}</button>
                 </form>
                 <p class="admin-message" role="status" data-kind="success" ${flash ? '' : 'hidden'}>${escapeHtml(flash)}</p>
             </div>
         </section>
 
-        <section class="admin-panel" aria-label="All accounts">
+        <section class="admin-panel" aria-label="${t('admin.allAccounts')}">
             <header class="admin-panel-header">
-                <h2>Semua akun</h2>
-                <span class="admin-status">${users.length} akun</span>
+                <h2>${t('admin.allAccounts')}</h2>
+                <span class="admin-status">${t('admin.accountCount', { count: users.length })}</span>
             </header>
             <div class="admin-table-wrap">
                 <table class="admin-table">
                     <thead>
-                        <tr><th>Email</th><th>Role</th><th>Perusahaan</th><th>Status</th><th>Dibuat</th><th></th></tr>
+                        <tr><th>${t('admin.col.email')}</th><th>${t('admin.col.role')}</th><th>${t('admin.col.company')}</th><th>${t('admin.col.status')}</th><th>${t('admin.col.created')}</th><th></th></tr>
                     </thead>
                     <tbody>
                         ${users.map((user) => `
                             <tr>
                                 <td>${escapeHtml(user.email)}</td>
-                                <td>${escapeHtml(ROLE_LABELS[user.role] ?? user.role)}</td>
+                                <td>${escapeHtml(roleLabel(user.role))}</td>
                                 <td>${user.vendor_name
                                     ? `${escapeHtml(user.vendor_name)} <span class="admin-muted">(${escapeHtml(user.company_status)})</span>`
-                                    : '<span class="admin-muted">PYK staff</span>'}</td>
-                                <td>${user.is_active ? statusPill('active', 'Aktif') : statusPill('inactive', 'Nonaktif')}</td>
+                                    : `<span class="admin-muted">${t('nav.pykStaff')}</span>`}</td>
+                                <td>${user.is_active ? statusPill('active', t('admin.active')) : statusPill('inactive', t('admin.inactive'))}</td>
                                 <td>${dateTime(user.created_at)}</td>
-                                <td>${user.id === me?.id ? '<span class="admin-muted">Anda</span>' : `
+                                <td>${user.id === me?.id ? `<span class="admin-muted">${t('admin.you')}</span>` : `
                                     <button class="admin-button" type="button" data-user-id="${escapeHtml(user.id)}"
-                                        data-active="${user.is_active}">${user.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
+                                        data-active="${user.is_active}">${user.is_active ? t('admin.deactivate') : t('admin.activate')}</button>`}
                                 </td>
                             </tr>
                         `).join('')}
@@ -610,7 +576,7 @@ async function renderUsers(container, isCurrent) {
                     role: form.elements.role.value
                 }
             });
-            state.usersFlash = `Akun ${user.email} (${ROLE_LABELS[user.role]}) dibuat.`;
+            state.usersFlash = t('admin.accountCreated', { email: user.email, role: roleLabel(user.role) });
             renderTab();
         } catch (error) {
             message.textContent = error.message;
@@ -655,25 +621,25 @@ async function renderNotifications(container, isCurrent) {
         return;
     }
 
-    const kindLabels = { invoice_approved: 'Sesuai', invoice_rejected: 'Tidak Sesuai', invoice_paid: 'Lunas' };
+    const kindLabel = (kind) => t(`admin.kind.${kind}`);
     const kindStatus = { invoice_approved: 'approved', invoice_rejected: 'rejected', invoice_paid: 'paid' };
 
     container.innerHTML = `
-        <section class="admin-panel" aria-label="Notification log">
+        <section class="admin-panel" aria-label="${t('admin.tab.notifications')}">
             <header class="admin-panel-header">
-                <h2>Notifikasi terkirim ke vendor</h2>
-                <span class="admin-status">${result.notifications.length} pesan</span>
+                <h2>${t('admin.notificationsSent')}</h2>
+                <span class="admin-status">${t('admin.messageCount', { count: result.notifications.length })}</span>
             </header>
             <div class="admin-list">
                 ${result.notifications.length ? result.notifications.map((note) => `
                     <details class="admin-mail">
                         <summary>
-                            <span>${statusPill(kindStatus[note.kind], kindLabels[note.kind])} <strong>${escapeHtml(note.subject)}</strong></span>
-                            <span class="admin-muted">${escapeHtml(note.vendor_name)} &lt;${escapeHtml(note.company_email)}&gt; · ${dateTime(note.created_at)}${note.read_at ? ' · dibaca' : ''}</span>
+                            <span>${statusPill(kindStatus[note.kind], kindLabel(note.kind))} <strong>${escapeHtml(note.subject)}</strong></span>
+                            <span class="admin-muted">${escapeHtml(note.vendor_name)} &lt;${escapeHtml(note.company_email)}&gt; · ${dateTime(note.created_at)}${note.read_at ? t('admin.read') : ''}</span>
                         </summary>
                         <p>${escapeHtml(note.body)}</p>
                     </details>
-                `).join('') : emptyState('Belum ada notifikasi.')}
+                `).join('') : emptyState(t('admin.noNotifications'))}
             </div>
         </section>
     `;
