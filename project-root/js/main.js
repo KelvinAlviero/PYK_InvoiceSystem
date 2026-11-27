@@ -6,7 +6,7 @@ import { LoginView } from './Views/Login/LoginView.js';
 import { RegistrationView } from './Views/Registration/RegistrationView.js';
 import { collectRegistrationData } from './Views/Registration/registrationState.js';
 import { submitRegistration } from './Views/Registration/registrationService.js';
-import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
+import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=5';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
 import { AdminView } from './Views/Admin/AdminView.js';
 import { apiRequest, changePassword, getCurrentUser, initAuth, login, logout } from './authService.js';
