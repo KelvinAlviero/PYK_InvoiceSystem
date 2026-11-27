@@ -67,6 +67,15 @@ Vendor submits invoice + 5 PDFs  ->  AP Verification: Sesuai / Tidak Sesuai (not
 
 Required PDFs: Purchase Order, Goods Receipt, Invoice Supplier, Surat Jalan, Faktur Pajak. A Notes PDF is optional. Every step is recorded in `invoice_events`. Vendors get an in-app notification (`notifications` table) when AP decides and when Treasury pays. The Admin dashboard shows the whole pipeline but leaves the decisions to AP and Treasury.
 
+## Languages (Bahasa Indonesia / English)
+
+Users pick a language under **Sidebar → Pengaturan / Settings**. Indonesian is the default, and the choice is saved in the browser.
+
+- **Front-end text** lives in `project-root/js/i18n.js`. Pages call `t('some.key')` instead of writing text directly.
+- **Server messages** (errors, confirmations) live in `project-root/server/lib/messages.js`. Routes throw `new HttpError(400, 'some.key', { params })`, and the server answers in the language the browser sends in the `X-Language` header.
+
+When you add or change text, add the key to **both** languages in the right file. Notification messages already sent to vendors are stored as written, in Indonesian.
+
 ## API overview
 
 All endpoints are under `/api`. Login uses an httpOnly session cookie, so the browser sends it automatically.

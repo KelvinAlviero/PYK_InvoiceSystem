@@ -7,7 +7,7 @@ export const regionsRouter = express.Router();
 
 function idParam(value) {
     if (!/^\d+$/.test(value)) {
-        throw new HttpError(400, 'Invalid id.');
+        throw new HttpError(400, 'error.invalidId');
     }
     return value;
 }

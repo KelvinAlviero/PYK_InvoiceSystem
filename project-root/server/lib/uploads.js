@@ -21,9 +21,9 @@ export function pdfUpload(fieldNames) {
                 return resolve();
             }
             if (error instanceof multer.MulterError) {
-                return reject(new HttpError(400, error.code === 'LIMIT_FILE_SIZE'
-                    ? 'Each PDF must be 5 MB or smaller.'
-                    : `Upload rejected: ${error.message}`));
+                return reject(error.code === 'LIMIT_FILE_SIZE'
+                    ? new HttpError(400, 'validation.fileTooLarge')
+                    : new HttpError(400, 'validation.uploadRejected', { reason: error.message }));
             }
             reject(error);
         });
@@ -38,7 +38,7 @@ export function pdfFile(files, field) {
     }
     // Check the bytes, not just the name/type the browser claims.
     if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
-        throw new HttpError(400, `${file.originalname} is not a PDF file.`);
+        throw new HttpError(400, 'validation.notPdf', { name: file.originalname });
     }
     return file;
 }

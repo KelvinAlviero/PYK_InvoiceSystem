@@ -3,6 +3,7 @@ import express from 'express';
 import { config, PROJECT_ROOT } from './config.js';
 import { pool } from './db.js';
 import { HttpError, loadUser } from './lib/auth.js';
+import { requestLanguage, translate } from './lib/messages.js';
 import { deleteExpiredSessions } from './lib/sessions.js';
 import { authRouter } from './routes/auth.js';
 import { invoicesRouter } from './routes/invoices.js';
@@ -35,18 +36,21 @@ api.use('/users', usersRouter);
 api.use('/invoices', invoicesRouter);
 api.use('/notifications', notificationsRouter);
 
-api.use((_req, _res, next) => next(new HttpError(404, 'Not found.')));
+api.use((_req, _res, next) => next(new HttpError(404, 'error.notFound')));
 
 // eslint-disable-next-line no-unused-vars
-api.use((error, _req, res, _next) => {
+api.use((error, req, res, _next) => {
     const status = error.status ?? error.statusCode ?? 500;
     if (status >= 500) {
         console.error(error);
     }
+    const language = requestLanguage(req);
     res.status(status).json({
         success: false,
         // Never leak internals (SQL errors etc.) to the browser.
-        message: status >= 500 ? 'Something went wrong on the server.' : error.message
+        message: status >= 500
+            ? translate(language, 'error.server')
+            : translate(language, error.key ?? error.message, error.params)
     });
 });
 

@@ -13,7 +13,7 @@ const STATUSES = ['pending', 'approved', 'rejected'];
 
 function idParam(value) {
     if (!/^\d+$/.test(value)) {
-        throw new HttpError(400, 'Invalid id.');
+        throw new HttpError(400, 'error.invalidId');
     }
     return value;
 }
@@ -22,7 +22,7 @@ function idParam(value) {
 vendorsRouter.get('/', async (req, res) => {
     const status = String(req.query.status ?? 'pending');
     if (!STATUSES.includes(status)) {
-        throw new HttpError(400, `status must be one of: ${STATUSES.join(', ')}.`);
+        throw new HttpError(400, 'error.invalidStatus', { options: STATUSES.join(', ') });
     }
 
     const { rows } = await query(
@@ -53,7 +53,7 @@ vendorsRouter.get('/:id', async (req, res) => {
         [id]
     );
     if (!company) {
-        throw new HttpError(404, 'Vendor not found.');
+        throw new HttpError(404, 'vendors.notFound');
     }
 
     const [banks, documents, users] = await Promise.all([
@@ -88,7 +88,7 @@ vendorsRouter.get('/:id/documents/:type', async (req, res) => {
         [idParam(req.params.id), req.params.type]
     );
     if (!doc) {
-        throw new HttpError(404, 'Document not found.');
+        throw new HttpError(404, 'documents.notFound');
     }
 
     res.set('Content-Type', 'application/pdf');
@@ -100,7 +100,7 @@ vendorsRouter.get('/:id/documents/:type', async (req, res) => {
 async function decide(req, res, status) {
     const note = String(req.body?.note ?? '').trim() || null;
     if (status === 'rejected' && !note) {
-        throw new HttpError(400, 'A note explaining the rejection is required.');
+        throw new HttpError(400, 'vendors.rejectNoteRequired');
     }
 
     // Only pending applications can be decided, so two reviewers clicking at
@@ -113,7 +113,7 @@ async function decide(req, res, status) {
         [idParam(req.params.id), status, req.user.id, note]
     );
     if (!company) {
-        throw new HttpError(409, 'This vendor is not pending (already decided, or does not exist).');
+        throw new HttpError(409, 'vendors.notPending');
     }
     res.json({ success: true, company });
 }

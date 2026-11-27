@@ -6,9 +6,17 @@ import { query, withTransaction } from '../db.js';
 import { HttpError, loginBlockReason, publicUser, requireLogin } from '../lib/auth.js';
 import { burnPasswordCheck, hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from '../lib/passwords.js';
 import { createSession, destroySession } from '../lib/sessions.js';
+import { requestLanguage, translate } from '../lib/messages.js';
 import { removeFolder, saveFile } from '../lib/storage.js';
 
 export const authRouter = express.Router();
+
+// Rate-limit responses, in the language the browser asked for.
+function limitReached(key) {
+    return (req, res, _next, options) => {
+        res.status(options.statusCode).json({ success: false, message: translate(requestLanguage(req), key) });
+    };
+}
 
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -16,7 +24,7 @@ const loginLimiter = rateLimit({
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     skipSuccessfulRequests: true,
-    message: { success: false, message: 'Too many login attempts. Try again in 15 minutes.' }
+    handler: limitReached('auth.tooManyLogins')
 });
 
 const registerLimiter = rateLimit({
@@ -24,7 +32,7 @@ const registerLimiter = rateLimit({
     limit: 10,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { success: false, message: 'Too many registrations from this network. Try again later.' }
+    handler: limitReached('auth.tooManyRegistrations')
 });
 
 // ---------------------------------------------------------------------------
@@ -36,7 +44,7 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
     const password = String(req.body?.password ?? '');
 
     if (!email || !password) {
-        throw new HttpError(400, 'Email and password are required.');
+        throw new HttpError(400, 'auth.emailPasswordRequired');
     }
 
     const { rows } = await query(
@@ -51,10 +59,10 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
 
     if (!user) {
         await burnPasswordCheck(password);
-        throw new HttpError(401, 'Invalid email or password.');
+        throw new HttpError(401, 'auth.invalidCredentials');
     }
     if (!(await verifyPassword(password, user.password_hash))) {
-        throw new HttpError(401, 'Invalid email or password.');
+        throw new HttpError(401, 'auth.invalidCredentials');
     }
 
     // Only tell someone their account is pending/rejected/disabled once they have
@@ -132,10 +140,9 @@ function parseUpload(req, res) {
                 return resolve();
             }
             if (error instanceof multer.MulterError) {
-                const message = error.code === 'LIMIT_FILE_SIZE'
-                    ? 'Each PDF must be 5 MB or smaller.'
-                    : `Upload rejected: ${error.message}`;
-                return reject(new HttpError(400, message));
+                return reject(error.code === 'LIMIT_FILE_SIZE'
+                    ? new HttpError(400, 'validation.fileTooLarge')
+                    : new HttpError(400, 'validation.uploadRejected', { reason: error.message }));
             }
             reject(error);
         });
@@ -147,33 +154,33 @@ function validateRegistration(body, files) {
     for (const field of TEXT_FIELDS) {
         const value = String(body[field] ?? '').trim();
         if (!value) {
-            throw new HttpError(400, `Missing required field: ${field}.`);
+            throw new HttpError(400, 'validation.missingField', { field });
         }
         if (value.length > 300) {
-            throw new HttpError(400, `Field is too long: ${field}.`);
+            throw new HttpError(400, 'validation.fieldTooLong', { field });
         }
         data[field] = value;
     }
     data.password = String(body.password); // do not trim passwords
 
     if (body.termsAccepted !== 'on' && body.termsAccepted !== 'true') {
-        throw new HttpError(400, 'You must accept the Terms of Payment.');
+        throw new HttpError(400, 'validation.termsRequired');
     }
     if (!EMAIL_PATTERN.test(data.email) || !EMAIL_PATTERN.test(data.companyEmail)) {
-        throw new HttpError(400, 'Please enter valid email addresses.');
+        throw new HttpError(400, 'validation.invalidEmails');
     }
     if (data.password.length < MIN_PASSWORD_LENGTH) {
-        throw new HttpError(400, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+        throw new HttpError(400, 'validation.passwordTooShort', { min: MIN_PASSWORD_LENGTH });
     }
     if (!BUSINESS_TYPES.includes(data.businessType)) {
-        throw new HttpError(400, 'Invalid business type.');
+        throw new HttpError(400, 'validation.invalidBusinessType');
     }
     if (!BANKS.includes(data.bankOneName) || !BANKS.includes(data.bankTwoName)) {
-        throw new HttpError(400, 'Invalid bank name.');
+        throw new HttpError(400, 'validation.invalidBank');
     }
     for (const field of ['province', 'cityRegency', 'village']) {
         if (!/^\d+$/.test(data[field])) {
-            throw new HttpError(400, 'Please choose a province, city and village from the lists.');
+            throw new HttpError(400, 'validation.chooseRegion');
         }
     }
 
@@ -184,11 +191,11 @@ function validateRegistration(body, files) {
     const documents = requiredDocuments.map((field) => {
         const file = files?.[field]?.[0];
         if (!file) {
-            throw new HttpError(400, `Missing required document: ${field}.`);
+            throw new HttpError(400, 'validation.missingDocument', { field });
         }
         // Check the bytes, not just the name/type the browser claims.
         if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
-            throw new HttpError(400, `${file.originalname} is not a PDF file.`);
+            throw new HttpError(400, 'validation.notPdf', { name: file.originalname });
         }
         return { documentType: DOCUMENT_FIELDS[field], file };
     });
@@ -206,7 +213,7 @@ authRouter.post('/register', registerLimiter, async (req, res) => {
         [data.village, data.cityRegency, data.province]
     );
     if (regionCheck.rowCount === 0) {
-        throw new HttpError(400, 'The chosen province, city and village do not match.');
+        throw new HttpError(400, 'validation.regionMismatch');
     }
 
     const passwordHash = await hashPassword(data.password);
@@ -263,14 +270,14 @@ authRouter.post('/register', registerLimiter, async (req, res) => {
         res.status(201).json({
             success: true,
             vendorCode: company.vendor_code,
-            message: 'Registration submitted. You can log in once PYK has approved your company.'
+            message: translate(requestLanguage(req), 'auth.registered')
         });
     } catch (error) {
         if (companyFolder) {
             await removeFolder(companyFolder).catch(() => {});
         }
         if (error.code === '23505' && error.constraint === 'users_email_unique') {
-            throw new HttpError(409, 'An account with this email already exists.');
+            throw new HttpError(409, 'auth.emailTaken');
         }
         throw error;
     }

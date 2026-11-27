@@ -34,7 +34,7 @@ const parsePaymentUpload = pdfUpload(['paymentProof']);
 
 function idParam(value) {
     if (!/^\d+$/.test(value)) {
-        throw new HttpError(400, 'Invalid id.');
+        throw new HttpError(400, 'error.invalidId');
     }
     return value;
 }
@@ -42,10 +42,10 @@ function idParam(value) {
 function text(body, field, { required = true, max = 200 } = {}) {
     const value = String(body?.[field] ?? '').trim();
     if (required && !value) {
-        throw new HttpError(400, `Missing required field: ${field}.`);
+        throw new HttpError(400, 'validation.missingField', { field });
     }
     if (value.length > max) {
-        throw new HttpError(400, `Field is too long: ${field}.`);
+        throw new HttpError(400, 'validation.fieldTooLong', { field });
     }
     return value || null;
 }
@@ -57,7 +57,7 @@ function amount(body) {
         value = value.replaceAll('.', ''); // Indonesian thousands separators: 48.500.000
     }
     if (!/^\d{1,13}(\.\d{1,2})?$/.test(value) || Number(value) <= 0) {
-        throw new HttpError(400, 'Amount must be a positive number (Rupiah), e.g. 48500000.');
+        throw new HttpError(400, 'validation.invalidAmount');
     }
     return value;
 }
@@ -88,7 +88,7 @@ async function loadVisibleInvoice(user, id) {
         params
     );
     if (!invoice) {
-        throw new HttpError(404, 'Invoice not found.');
+        throw new HttpError(404, 'invoices.notFound');
     }
     return invoice;
 }
@@ -131,7 +131,7 @@ invoicesRouter.get('/', async (req, res) => {
     if (req.query.status) {
         const status = String(req.query.status);
         if (!STATUSES.includes(status)) {
-            throw new HttpError(400, `status must be one of: ${STATUSES.join(', ')}.`);
+            throw new HttpError(400, 'error.invalidStatus', { options: STATUSES.join(', ') });
         }
         params.push(status);
         conditions.push(`i.status = $${params.length}`);
@@ -228,7 +228,7 @@ invoicesRouter.get('/:id/documents/:type', async (req, res) => {
         [invoice.id, req.params.type]
     );
     if (!doc) {
-        throw new HttpError(404, 'Document not found.');
+        throw new HttpError(404, 'documents.notFound');
     }
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', `inline; filename="${doc.original_name.replace(/[^\w.\- ]/g, '_')}"`);
@@ -257,7 +257,7 @@ invoicesRouter.post('/', requireRole('vendor'), async (req, res) => {
     for (const [field, documentType] of Object.entries(SUBMIT_DOCUMENTS)) {
         const file = pdfFile(req.files, field);
         if (!file && REQUIRED_DOCUMENTS.includes(field)) {
-            throw new HttpError(400, `Missing required document: ${field}.`);
+            throw new HttpError(400, 'validation.missingDocument', { field });
         }
         if (file) {
             documents.push({ documentType, file });
@@ -297,7 +297,7 @@ invoicesRouter.post('/:id/resubmit', requireRole('vendor'), async (req, res) => 
     const body = req.body ?? {};
     const current = await loadVisibleInvoice(req.user, req.params.id);
     if (current.status !== 'rejected') {
-        throw new HttpError(409, 'Only invoices marked "Tidak Sesuai" (rejected) can be resubmitted.');
+        throw new HttpError(409, 'invoices.onlyRejectedResubmit');
     }
 
     const updates = {
@@ -326,7 +326,7 @@ invoicesRouter.post('/:id/resubmit', requireRole('vendor'), async (req, res) => 
                 updates.amount, updates.vendor_note, revision]
         );
         if (!invoice) {
-            throw new HttpError(409, 'This invoice was changed by someone else. Reload and try again.');
+            throw new HttpError(409, 'invoices.changedConcurrently');
         }
         // New file names per revision, so earlier versions stay on disk for the record.
         for (const { documentType, file } of replacements) {
@@ -350,10 +350,10 @@ invoicesRouter.post('/:id/verify', requireRole('verification'), async (req, res)
     const note = String(req.body?.note ?? '').trim().slice(0, 1000) || null;
 
     if (!['approve', 'reject'].includes(decision)) {
-        throw new HttpError(400, "decision must be 'approve' or 'reject'.");
+        throw new HttpError(400, 'invoices.invalidDecision');
     }
     if (decision === 'reject' && !note) {
-        throw new HttpError(400, 'Please write a note telling the vendor what to fix.');
+        throw new HttpError(400, 'invoices.rejectNoteRequired');
     }
     const status = decision === 'approve' ? 'approved' : 'rejected';
 
@@ -367,7 +367,7 @@ invoicesRouter.post('/:id/verify', requireRole('verification'), async (req, res)
             [idParam(req.params.id), status, req.user.id, note]
         );
         if (!invoice) {
-            throw new HttpError(409, 'This invoice is not waiting for verification (already decided, or does not exist).');
+            throw new HttpError(409, 'invoices.notAwaitingVerification');
         }
 
         await addEvent(client, invoice.id, req.user.id, status, note);
@@ -403,10 +403,10 @@ invoicesRouter.post('/:id/pay', requireRole('treasury'), async (req, res) => {
     const proof = pdfFile(req.files, 'paymentProof');
 
     if (!PAYMENT_METHODS.includes(paymentMethod)) {
-        throw new HttpError(400, `paymentMethod must be one of: ${PAYMENT_METHODS.join(', ')}.`);
+        throw new HttpError(400, 'invoices.invalidPaymentMethod', { options: PAYMENT_METHODS.join(', ') });
     }
     if (![1, 2].includes(paidToAccount)) {
-        throw new HttpError(400, "paidToAccount must be 1 or 2 (the vendor's bank account).");
+        throw new HttpError(400, 'invoices.invalidAccount');
     }
 
     const invoice = await withTransaction(async (client) => {
@@ -419,7 +419,7 @@ invoicesRouter.post('/:id/pay', requireRole('treasury'), async (req, res) => {
             [idParam(req.params.id), req.user.id, paymentMethod, paymentReference, paidToAccount]
         );
         if (!invoice) {
-            throw new HttpError(409, 'This invoice is not ready for payment (not approved by AP, or already paid).');
+            throw new HttpError(409, 'invoices.notReadyForPayment');
         }
 
         const { rows: [bank] } = await client.query(

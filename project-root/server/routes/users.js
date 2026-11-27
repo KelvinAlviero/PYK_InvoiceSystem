@@ -15,12 +15,12 @@ usersRouter.post('/me/password', requireRole('vendor', ...STAFF_ROLES), async (r
     const newPassword = String(req.body?.newPassword ?? '');
 
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-        throw new HttpError(400, `New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+        throw new HttpError(400, 'validation.newPasswordTooShort', { min: MIN_PASSWORD_LENGTH });
     }
 
     const { rows: [user] } = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
     if (!(await verifyPassword(currentPassword, user.password_hash))) {
-        throw new HttpError(400, 'Current password is incorrect.');
+        throw new HttpError(400, 'users.currentPasswordWrong');
     }
 
     await query('UPDATE users SET password_hash = $2 WHERE id = $1', [req.user.id, await hashPassword(newPassword)]);
@@ -54,13 +54,13 @@ usersRouter.post('/', adminOnly, async (req, res) => {
     const role = String(req.body?.role ?? '').trim().toLowerCase();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        throw new HttpError(400, 'Please enter a valid email.');
+        throw new HttpError(400, 'validation.invalidEmail');
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
-        throw new HttpError(400, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+        throw new HttpError(400, 'validation.passwordTooShort', { min: MIN_PASSWORD_LENGTH });
     }
     if (!STAFF_ROLES.includes(role)) {
-        throw new HttpError(400, `role must be one of: ${STAFF_ROLES.join(', ')}. Vendors register themselves.`);
+        throw new HttpError(400, 'users.invalidStaffRole', { options: STAFF_ROLES.join(', ') });
     }
 
     try {
@@ -72,7 +72,7 @@ usersRouter.post('/', adminOnly, async (req, res) => {
         res.status(201).json({ success: true, user });
     } catch (error) {
         if (error.code === '23505') {
-            throw new HttpError(409, 'An account with this email already exists.');
+            throw new HttpError(409, 'auth.emailTaken');
         }
         throw error;
     }
@@ -82,13 +82,13 @@ usersRouter.post('/', adminOnly, async (req, res) => {
 usersRouter.patch('/:id', adminOnly, async (req, res) => {
     const id = req.params.id;
     if (!/^\d+$/.test(id)) {
-        throw new HttpError(400, 'Invalid id.');
+        throw new HttpError(400, 'error.invalidId');
     }
     if (typeof req.body?.isActive !== 'boolean') {
-        throw new HttpError(400, 'isActive (true/false) is required.');
+        throw new HttpError(400, 'users.isActiveRequired');
     }
     if (id === String(req.user.id) && req.body.isActive === false) {
-        throw new HttpError(400, 'You cannot deactivate your own account.');
+        throw new HttpError(400, 'users.cannotDeactivateSelf');
     }
 
     const { rows: [user] } = await query(
@@ -96,7 +96,7 @@ usersRouter.patch('/:id', adminOnly, async (req, res) => {
         [id, req.body.isActive]
     );
     if (!user) {
-        throw new HttpError(404, 'User not found.');
+        throw new HttpError(404, 'users.notFound');
     }
     if (!user.is_active) {
         await query('DELETE FROM sessions WHERE user_id = $1', [id]);

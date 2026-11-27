@@ -29,14 +29,14 @@ notificationsRouter.get('/', requireRole('vendor', 'admin'), async (req, res) =>
 // POST /api/notifications/:id/read  (vendor, own company)
 notificationsRouter.post('/:id/read', requireRole('vendor'), async (req, res) => {
     if (!/^\d+$/.test(req.params.id)) {
-        throw new HttpError(400, 'Invalid id.');
+        throw new HttpError(400, 'error.invalidId');
     }
     const { rowCount } = await query(
         'UPDATE notifications SET read_at = coalesce(read_at, now()) WHERE id = $1 AND company_id = $2',
         [req.params.id, req.user.company_id]
     );
     if (!rowCount) {
-        throw new HttpError(404, 'Notification not found.');
+        throw new HttpError(404, 'notifications.notFound');
     }
     res.json({ success: true });
 });

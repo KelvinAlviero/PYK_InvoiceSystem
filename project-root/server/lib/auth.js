@@ -3,11 +3,14 @@ import { findSessionUser, readSessionCookie } from './sessions.js';
 export const ROLES = ['vendor', 'verification', 'treasury', 'admin'];
 export const STAFF_ROLES = ['verification', 'treasury', 'admin'];
 
-// An error with an HTTP status; the error handler in index.js sends it as JSON.
+// An error with an HTTP status. `key` is a message key from lib/messages.js (params fill
+// its placeholders); the error handler in index.js translates it and sends it as JSON.
 export class HttpError extends Error {
-    constructor(status, message) {
-        super(message);
+    constructor(status, key, params = {}) {
+        super(key);
         this.status = status;
+        this.key = key;
+        this.params = params;
     }
 }
 
@@ -23,16 +26,16 @@ export function publicUser(row) {
     };
 }
 
-// Why a (correct-password) user may not use the system, or null if they may.
+// Why a (correct-password) user may not use the system (a message key), or null if they may.
 export function loginBlockReason(row) {
     if (!row.is_active) {
-        return 'This account has been deactivated. Contact an administrator.';
+        return 'auth.deactivated';
     }
     if (row.role === 'vendor' && row.company_status === 'pending') {
-        return 'Your registration is still being reviewed. You can log in once it has been approved.';
+        return 'auth.pendingReview';
     }
     if (row.role === 'vendor' && row.company_status === 'rejected') {
-        return 'Your registration was rejected. Contact PYK for details.';
+        return 'auth.registrationRejected';
     }
     return null;
 }
@@ -50,7 +53,7 @@ export async function loadUser(req, _res, next) {
 }
 
 export function requireLogin(req, _res, next) {
-    next(req.user ? undefined : new HttpError(401, 'Please log in.'));
+    next(req.user ? undefined : new HttpError(401, 'auth.loginRequired'));
 }
 
 // requireRole('verification', 'admin') -> only those roles pass. Admin is never implied:
@@ -58,10 +61,10 @@ export function requireLogin(req, _res, next) {
 export function requireRole(...roles) {
     return (req, _res, next) => {
         if (!req.user) {
-            return next(new HttpError(401, 'Please log in.'));
+            return next(new HttpError(401, 'auth.loginRequired'));
         }
         if (!roles.includes(req.user.role)) {
-            return next(new HttpError(403, 'You do not have access to this.'));
+            return next(new HttpError(403, 'auth.forbidden'));
         }
         next();
     };

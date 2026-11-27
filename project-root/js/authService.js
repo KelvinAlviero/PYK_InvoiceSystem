@@ -1,4 +1,4 @@
-import { t } from './i18n.js';
+import { getLanguage, t } from './i18n.js';
 
 // Talks to the Express API (same origin, so the session cookie is sent automatically).
 // The server is the source of truth for who is logged in; currentUser is only a cache
@@ -6,7 +6,8 @@ import { t } from './i18n.js';
 let currentUser = null;
 
 export async function apiRequest(path, { method = 'GET', body } = {}) {
-    const options = { method, credentials: 'same-origin', headers: {} };
+    // X-Language: the server answers error messages in the language chosen in Settings.
+    const options = { method, credentials: 'same-origin', headers: { 'X-Language': getLanguage() } };
 
     if (body instanceof FormData) {
         options.body = body; // browser sets the multipart boundary itself
