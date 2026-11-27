@@ -38,7 +38,7 @@ export function UserProfileView(user) {
                         </div>
                         <div>
                             <dt>${t('profile.vendorId')}</dt>
-                            <dd>${escapeHtml(company.vendorCode)}</dd>
+                            <dd>${escapeHtml(company.shortCode ?? company.vendorCode)}</dd>
                         </div>
                         ` : ''}
                     </dl>

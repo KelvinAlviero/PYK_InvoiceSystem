@@ -54,6 +54,8 @@ const messages = {
         'vendors.notFound': 'Vendor tidak ditemukan.',
         'vendors.rejectNoteRequired': 'Catatan alasan penolakan wajib diisi.',
         'vendors.notPending': 'Vendor ini tidak sedang menunggu review (sudah diputuskan, atau tidak ada).',
+        'vendors.codeInvalid': 'Kode vendor harus 3 huruf (A-Z), contoh: BCA.',
+        'vendors.codeTaken': 'Kode vendor {code} sudah dipakai vendor lain.',
 
         'documents.notFound': 'Dokumen tidak ditemukan.',
         'notifications.notFound': 'Notifikasi tidak ditemukan.',
@@ -113,6 +115,8 @@ const messages = {
         'vendors.notFound': 'Vendor not found.',
         'vendors.rejectNoteRequired': 'A note explaining the rejection is required.',
         'vendors.notPending': 'This vendor is not pending (already decided, or does not exist).',
+        'vendors.codeInvalid': 'The vendor code must be 3 letters (A-Z), e.g. BCA.',
+        'vendors.codeTaken': 'Vendor code {code} is already used by another vendor.',
 
         'documents.notFound': 'Document not found.',
         'notifications.notFound': 'Notification not found.',

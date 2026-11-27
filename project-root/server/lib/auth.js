@@ -21,7 +21,7 @@ export function publicUser(row) {
         email: row.email,
         role: row.role,
         company: row.company_id
-            ? { id: String(row.company_id), vendorCode: row.vendor_code, name: row.vendor_name }
+            ? { id: String(row.company_id), vendorCode: row.vendor_code, shortCode: row.short_code, name: row.vendor_name }
             : null
     };
 }

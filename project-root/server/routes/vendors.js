@@ -26,7 +26,7 @@ vendorsRouter.get('/', async (req, res) => {
     }
 
     const { rows } = await query(
-        `SELECT c.id::text, c.vendor_code, c.vendor_name, c.entity, c.business_type,
+        `SELECT c.id::text, c.vendor_code, c.short_code, c.vendor_name, c.entity, c.business_type,
                 c.status, c.submitted_at, c.reviewed_at, c.review_note,
                 (SELECT email FROM users WHERE company_id = c.id ORDER BY id LIMIT 1) AS login_email
            FROM companies c
@@ -43,7 +43,8 @@ vendorsRouter.get('/:id', async (req, res) => {
     const id = idParam(req.params.id);
     const { rows: [company] } = await query(
         `SELECT c.*, c.id::text AS id, p.name AS province, ci.name AS city, v.name AS village,
-                r.email AS reviewed_by_email
+                r.email AS reviewed_by_email,
+                CASE WHEN c.status = 'pending' THEN suggest_vendor_code(c.vendor_name) END AS suggested_code
            FROM companies c
            JOIN provinces p ON p.id = c.province_id
            JOIN cities ci ON ci.id = c.city_id
@@ -97,25 +98,53 @@ vendorsRouter.get('/:id/documents/:type', async (req, res) => {
     res.sendFile(filePath(doc.storage_key));
 });
 
+const VENDOR_CODE = /^[A-Z]{3}$/;
+
 async function decide(req, res, status) {
+    const id = idParam(req.params.id);
     const note = String(req.body?.note ?? '').trim() || null;
     if (status === 'rejected' && !note) {
         throw new HttpError(400, 'vendors.rejectNoteRequired');
     }
 
-    // Only pending applications can be decided, so two reviewers clicking at
-    // the same time cannot overwrite each other.
-    const { rows: [company] } = await query(
-        `UPDATE companies
-            SET status = $2, reviewed_by = $3, reviewed_at = now(), review_note = $4
-          WHERE id = $1 AND status = 'pending'
-      RETURNING id::text, vendor_code, status, reviewed_at, review_note`,
-        [idParam(req.params.id), status, req.user.id, note]
-    );
-    if (!company) {
-        throw new HttpError(409, 'vendors.notPending');
+    // Approving gives the vendor its permanent 3-letter code: the one the admin typed,
+    // or (left empty) one suggested from the vendor name.
+    const typedCode = String(req.body?.shortCode ?? '').trim().toUpperCase();
+    if (status === 'approved' && typedCode && !VENDOR_CODE.test(typedCode)) {
+        throw new HttpError(400, 'vendors.codeInvalid');
     }
-    res.json({ success: true, company });
+
+    // An automatic code can lose a race with another approval; try a fresh one then.
+    for (let attempt = 1; ; attempt += 1) {
+        try {
+            // Only pending applications can be decided, so two reviewers clicking at
+            // the same time cannot overwrite each other.
+            const { rows: [company] } = await query(
+                `UPDATE companies
+                    SET status = $2, reviewed_by = $3, reviewed_at = now(), review_note = $4,
+                        short_code = CASE WHEN $2 = 'approved'
+                                          THEN coalesce($5, suggest_vendor_code(vendor_name))
+                                          ELSE short_code END
+                  WHERE id = $1 AND status = 'pending'
+              RETURNING id::text, vendor_code, short_code, status, reviewed_at, review_note`,
+                [id, status, req.user.id, note, typedCode || null]
+            );
+            if (!company) {
+                throw new HttpError(409, 'vendors.notPending');
+            }
+            return res.json({ success: true, company });
+        } catch (error) {
+            if (error.code === '23505' && error.constraint === 'companies_short_code_key') {
+                if (typedCode) {
+                    throw new HttpError(409, 'vendors.codeTaken', { code: typedCode });
+                }
+                if (attempt < 3) {
+                    continue;
+                }
+            }
+            throw error;
+        }
+    }
 }
 
 vendorsRouter.post('/:id/approve', (req, res) => decide(req, res, 'approved'));

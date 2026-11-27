@@ -65,6 +65,8 @@ Vendor submits invoice + 5 PDFs  ->  AP Verification: Sesuai / Tidak Sesuai (not
                                                      Treasury pays (method, bank ref, proof PDF)  ->  Lunas
 ```
 
+**Invoice IDs** look like `2026-09-12-BCA001`: the first submission date (Jakarta time), the vendor's 3-letter code, then the vendor's own running number (never reset; it goes to 4 digits after 999). A resubmitted invoice keeps its ID. The admin sets each vendor's code when approving it, or leaves it empty to get one generated from the name (PT Bumi Cahaya Abadi → BCA). Codes are unique and can never be changed once set; the database enforces both.
+
 Required PDFs: Purchase Order, Goods Receipt, Invoice Supplier, Surat Jalan, Faktur Pajak. A Notes PDF is optional. Every step is recorded in `invoice_events`. Vendors get an in-app notification (`notifications` table) when AP decides and when Treasury pays. The Admin dashboard shows the whole pipeline but leaves the decisions to AP and Treasury.
 
 ## Languages (Bahasa Indonesia / English)

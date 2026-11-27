@@ -339,7 +339,7 @@ async function renderVendors(container, isCurrent) {
                             aria-current="${vendor.id === state.selectedVendorId}">
                             <span class="admin-row-top">
                                 <span class="admin-row-title">${escapeHtml(vendor.vendor_name)}</span>
-                                <span class="admin-muted">${escapeHtml(vendor.vendor_code)}</span>
+                                <span class="admin-muted">${escapeHtml(vendor.short_code ?? vendor.vendor_code)}</span>
                             </span>
                             <span class="admin-row-bottom">
                                 <span class="admin-muted">${escapeHtml(businessTypeLabel(vendor.business_type))}</span>
@@ -407,6 +407,7 @@ async function renderVendorDetail(target, isCurrent) {
         </div>
 
         <dl class="admin-fields">
+            ${vendor.short_code ? field(t('admin.vendorCode'), vendor.short_code) : ''}
             ${field(t('admin.businessType'), businessTypeLabel(vendor.business_type))}
             ${field(t('admin.npwp'), vendor.company_npwp)}
             ${field(t('admin.address'), `${vendor.street} ${vendor.block}, ${vendor.village}, ${vendor.city}, ${vendor.province}`)}
@@ -441,6 +442,12 @@ async function renderVendorDetail(target, isCurrent) {
         ${vendor.status === 'pending' ? `
             <h4 class="admin-section-title">${t('admin.decision')}</h4>
             <label class="admin-field">
+                ${t('admin.vendorCodeLabel')}
+                <input class="admin-vendor-code" type="text" maxlength="3" autocomplete="off"
+                    placeholder="${escapeHtml(vendor.suggested_code ?? '')}">
+            </label>
+            <p class="admin-hint">${escapeHtml(t('admin.vendorCodeHelp', { code: vendor.suggested_code ?? '' }))}</p>
+            <label class="admin-field">
                 ${t('admin.decisionNote')}
                 <textarea class="admin-vendor-note" maxlength="1000"></textarea>
             </label>
@@ -456,6 +463,7 @@ async function renderVendorDetail(target, isCurrent) {
         button.addEventListener('click', async () => {
             const decision = button.dataset.decision;
             const note = target.querySelector('.admin-vendor-note').value.trim();
+            const shortCode = target.querySelector('.admin-vendor-code').value.trim().toUpperCase();
             const message = target.querySelector('.admin-message');
             const buttons = target.querySelectorAll('[data-decision]');
 
@@ -465,10 +473,16 @@ async function renderVendorDetail(target, isCurrent) {
                 message.hidden = false;
                 return;
             }
+            if (decision === 'approve' && shortCode && !/^[A-Z]{3}$/.test(shortCode)) {
+                message.textContent = t('admin.vendorCodeInvalid');
+                message.dataset.kind = 'error';
+                message.hidden = false;
+                return;
+            }
 
             buttons.forEach((b) => { b.disabled = true; });
             try {
-                await apiRequest(`/vendors/${encodeURIComponent(id)}/${decision}`, { method: 'POST', body: { note } });
+                await apiRequest(`/vendors/${encodeURIComponent(id)}/${decision}`, { method: 'POST', body: { note, shortCode } });
                 state.selectedVendorId = null;
                 renderTab();
             } catch (error) {

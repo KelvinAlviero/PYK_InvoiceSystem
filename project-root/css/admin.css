@@ -491,3 +491,15 @@
         grid-template-columns: 1fr;
     }
 }
+
+.admin-hint {
+    margin: 4px 0 10px;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.admin-vendor-code {
+    max-width: 120px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}

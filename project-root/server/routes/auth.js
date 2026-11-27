@@ -49,7 +49,7 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
 
     const { rows } = await query(
         `SELECT u.id, u.email, u.role, u.company_id, u.is_active, u.password_hash,
-                c.vendor_code, c.vendor_name, c.status AS company_status
+                c.vendor_code, c.short_code, c.vendor_name, c.status AS company_status
            FROM users u
            LEFT JOIN companies c ON c.id = u.company_id
           WHERE lower(u.email) = lower($1)`,

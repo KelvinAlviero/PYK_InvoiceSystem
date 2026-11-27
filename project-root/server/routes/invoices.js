@@ -62,6 +62,11 @@ function amount(body) {
     return value;
 }
 
+// "BCA" + 7 -> "BCA007" (grows to 4 digits after 999 instead of cutting off).
+function invoiceSuffix(shortCode, number) {
+    return `${shortCode}${String(number).padStart(3, '0')}`;
+}
+
 function formatRupiah(value) {
     return `Rp ${Number(value).toLocaleString('id-ID')}`;
 }
@@ -147,7 +152,7 @@ invoicesRouter.get('/', async (req, res) => {
                 ) AS required_documents
            FROM invoices i JOIN companies c ON c.id = i.company_id
           WHERE ${conditions.join(' AND ')}
-          ORDER BY i.submitted_at DESC
+          ORDER BY i.submitted_at DESC, i.id DESC
           LIMIT 500`,
         params
     );
@@ -267,12 +272,22 @@ invoicesRouter.post('/', requireRole('vendor'), async (req, res) => {
     let folder = null;
     try {
         const invoice = await withTransaction(async (client) => {
+            // Next number for this vendor. The row lock this UPDATE takes makes two
+            // simultaneous submissions wait for each other, so numbers never repeat.
+            const { rows: [vendor] } = await client.query(
+                `UPDATE companies SET invoice_seq = invoice_seq + 1
+                  WHERE id = $1 RETURNING short_code, invoice_seq`,
+                [req.user.company_id]
+            );
             const { rows: [invoice] } = await client.query(
-                `INSERT INTO invoices (company_id, submitted_by, branch_name, po_number, invoice_number, amount, vendor_note)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `INSERT INTO invoices (company_id, submitted_by, branch_name, po_number, invoice_number, amount, vendor_note,
+                                      invoice_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7,
+                         to_char(now() AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') || '-' || $8)
                  RETURNING id::text, invoice_code, status`,
                 [req.user.company_id, req.user.id, fields.branchName, fields.poNumber,
-                    fields.invoiceNumber, fields.amount, fields.vendorNote]
+                    fields.invoiceNumber, fields.amount, fields.vendorNote,
+                    invoiceSuffix(vendor.short_code, vendor.invoice_seq)]
             );
             folder = `invoices/${invoice.id}`;
             for (const { documentType, file } of documents) {

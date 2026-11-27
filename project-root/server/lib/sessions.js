@@ -53,7 +53,7 @@ export function readSessionCookie(req) {
 export async function findSessionUser(token) {
     const { rows } = await query(
         `SELECT u.id, u.email, u.role, u.company_id, u.is_active,
-                c.vendor_code, c.vendor_name, c.status AS company_status
+                c.vendor_code, c.short_code, c.vendor_name, c.status AS company_status
            FROM sessions s
            JOIN users u ON u.id = s.user_id
            LEFT JOIN companies c ON c.id = u.company_id
