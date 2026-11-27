@@ -66,3 +66,12 @@ export async function findSessionUser(token) {
 export async function deleteExpiredSessions() {
     await query('DELETE FROM sessions WHERE expires_at <= now()');
 }
+
+// After a password change: sign out every other browser, keep this one.
+export async function deleteOtherSessions(req, userId) {
+    const token = readSessionCookie(req);
+    await query(
+        'DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2',
+        [userId, token ? hashToken(token) : '']
+    );
+}

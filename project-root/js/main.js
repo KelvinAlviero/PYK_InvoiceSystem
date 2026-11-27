@@ -8,7 +8,7 @@ import { collectRegistrationData } from './Views/Registration/registrationState.
 import { submitRegistration } from './Views/Registration/registrationService.js';
 import { TreasuryView } from './Views/Treasury/TreasuryView.js?v=1';
 import { VerificationView } from './Views/AP_Verification/APVeriView.js';
-import { apiRequest, getCurrentUser, initAuth, login, logout } from './authService.js';
+import { apiRequest, changePassword, getCurrentUser, initAuth, login, logout } from './authService.js';
 const appContainer = document.getElementById('app');
 let registrationStep = 1;
 let registrationData = {};
@@ -130,6 +130,63 @@ function restoreRegistrationFields() {
     });
 }
 
+// Profile page: show/hide the change-password form and submit it to the API.
+function attachPasswordFormListeners() {
+    const toggleButton = document.querySelector('.change-password-button');
+    const form = document.querySelector('.password-form');
+    const message = form?.querySelector('.password-message');
+    const submitButton = form?.querySelector('button[type="submit"]');
+
+    if (!toggleButton || !form || !message || !submitButton) {
+        return;
+    }
+
+    function showMessage(text, kind) {
+        message.textContent = text;
+        message.dataset.kind = kind;
+        message.hidden = false;
+    }
+
+    function setOpen(isOpen) {
+        form.hidden = !isOpen;
+        toggleButton.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen) {
+            form.reset();
+            message.hidden = true;
+            form.querySelector('input')?.focus();
+        }
+    }
+
+    toggleButton.addEventListener('click', () => setOpen(form.hidden));
+    form.querySelector('.password-cancel-button')?.addEventListener('click', () => setOpen(false));
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const currentPassword = form.elements.currentPassword.value;
+        const newPassword = form.elements.newPassword.value;
+
+        if (newPassword !== form.elements.confirmPassword.value) {
+            showMessage('The new passwords do not match.', 'error');
+            return;
+        }
+        if (newPassword === currentPassword) {
+            showMessage('The new password must be different from the current one.', 'error');
+            return;
+        }
+
+        submitButton.disabled = true;
+        try {
+            await changePassword(currentPassword, newPassword);
+            form.reset();
+            showMessage('Password changed.', 'success');
+        } catch (error) {
+            showMessage(error.message, 'error');
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+}
+
 function goToLogin(notice = '') {
     registrationStep = 1;
     registrationData = {};
@@ -220,6 +277,7 @@ function renderApp(activeView = 'user', authMode = 'login') {
             await logout();
             goToLogin();
         });
+        attachPasswordFormListeners();
     }
 
     if (isLoginView) {

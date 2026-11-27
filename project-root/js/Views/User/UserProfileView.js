@@ -46,11 +46,32 @@ export function UserProfileView(user) {
                         </div>
                         ` : ''}
                     </dl>
+
+                    <form class="password-form" hidden>
+                        <h2>Change password</h2>
+                        <div class="password-field">
+                            <label for="current-password">Current password</label>
+                            <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required>
+                        </div>
+                        <div class="password-field">
+                            <label for="new-password">New password</label>
+                            <input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+                        </div>
+                        <div class="password-field">
+                            <label for="confirm-password">Repeat new password</label>
+                            <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+                        </div>
+                        <p class="password-message" role="status" hidden></p>
+                        <div class="password-form-actions">
+                            <button class="password-cancel-button" type="button">Cancel</button>
+                            <button type="submit">Save password</button>
+                        </div>
+                    </form>
                 </div>
                 <div class="profile-page-avatar" aria-label="User profile picture" role="img"></div>
             </div>
             <div class="profile-page-actions">
-                <button type="button">Change password</button>
+                <button class="change-password-button" type="button" aria-expanded="false">Change password</button>
                 <button type="button">Payment</button>
                 <button class="logout-button" type="button">Logout</button>
             </div>

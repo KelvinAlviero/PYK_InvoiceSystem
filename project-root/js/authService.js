@@ -70,3 +70,7 @@ export async function logout() {
         // already logged out server-side; nothing else to do
     }
 }
+
+export function changePassword(currentPassword, newPassword) {
+    return apiRequest('/users/me/password', { method: 'POST', body: { currentPassword, newPassword } });
+}

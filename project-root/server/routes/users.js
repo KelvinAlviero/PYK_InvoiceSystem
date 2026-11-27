@@ -2,6 +2,7 @@ import express from 'express';
 import { query } from '../db.js';
 import { HttpError, requireRole, STAFF_ROLES } from '../lib/auth.js';
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from '../lib/passwords.js';
+import { deleteOtherSessions } from '../lib/sessions.js';
 
 export const usersRouter = express.Router();
 
@@ -23,6 +24,7 @@ usersRouter.post('/me/password', requireRole('vendor', ...STAFF_ROLES), async (r
     }
 
     await query('UPDATE users SET password_hash = $2 WHERE id = $1', [req.user.id, await hashPassword(newPassword)]);
+    await deleteOtherSessions(req, req.user.id);
     res.json({ success: true });
 });
 
