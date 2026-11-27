@@ -9,6 +9,7 @@
     "node": "22.x"
   },
   "scripts": {
+    "prestart": "node server/scripts/initDb.js && node server/scripts/seedSampleRegions.js",
     "start": "node server/index.js",
     "dev": "node --watch --env-file-if-exists=.env server/index.js",
     "db:init": "node --env-file-if-exists=.env server/scripts/initDb.js",

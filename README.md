@@ -35,20 +35,21 @@ Open http://localhost:3000. Don't open `index.html` as a file, because the page 
 ## Deploy on Railway
 
 1. **New Project → Deploy from GitHub repo**, and pick this repo.
-2. In the service's **Settings**, set **Root Directory** to `project-root`. Railway detects Node and runs `npm start`.
+2. On the **app service**, under **Settings**, set **Root Directory** to `project-root`. Railway detects Node and runs `npm start`.
 3. **+ New → Database → PostgreSQL** in the same project.
-4. In the app service's **Variables**:
+4. Under the **app service's** Variables (not the Postgres service's):
    - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (reference variable, uses Railway's private network)
    - `NODE_ENV` = `production` (makes the login cookie `Secure`)
    - `UPLOAD_DIR` = `/data/uploads`
-5. **Add a Volume** to the app service mounted at `/data`. Without it, uploaded PDFs are wiped on every redeploy.
-6. **Settings → Networking → Generate Domain** to get a public URL.
-7. Create the tables and the first admin. From your laptop with the [Railway CLI](https://docs.railway.com/guides/cli), inside `project-root/`:
+5. **Add a Volume to the app service** mounted at `/data`. Without it, uploaded PDFs are wiped on every redeploy.
+6. **Settings → Networking → Generate Domain** on the app service to get a public URL.
+7. Deploy. Before the server starts, `npm start` runs `prestart`, which creates the tables (only if they're missing) and loads the sample regions. There's nothing to run by hand, and the database never needs a public URL.
+8. Create the first admin from inside the running app, from your laptop in `project-root/`:
    ```bash
-   railway link
-   railway run --service Postgres -- sh -c 'DATABASE_URL=$DATABASE_PUBLIC_URL DATABASE_SSL=true npm run db:init'
+   railway link              # once per folder
+   railway ssh --service PYK_InvoiceSystem
+   npm run create-staff -- you@example.com admin   # run inside the ssh session; asks for a password
    ```
-   Run `db:seed-regions` and `create-staff -- you@example.com admin` the same way.
 
 ## API overview
 
